@@ -1,0 +1,124 @@
+<UserControl x:Class="namm.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:namm"
+             mc:Ignorable="d" 
+             d:DesignHeight="550" d:DesignWidth="1024"
+             Loaded="UserControl_Loaded">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Nạp tệp style cho nút xóa -->
+                <ResourceDictionary Source="LinkButtonStyle.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.Resources>
+            <Style x:Key="CenterAlignedColumn" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="CenterAlignedCell" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="HorizontalAlignment" Value="Center" />
+            </Style>
+        </Grid.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0" Margin="5">
+            <TextBlock DockPanel.Dock="Top" Text="SƠ ĐỒ BÀN" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+            <DataGrid x:Name="dgTables" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" LoadingRow="DgTables_LoadingRow" SelectionChanged="DgTables_SelectionChanged">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Status}" Value="Trống">
+                                <Setter Property="Background" Value="LightGreen"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Status}" Value="Có người">
+                                <Setter Property="Background" Value="LightCoral"/>
+                            </DataTrigger>
+                            <!-- Chỉ tô màu vàng khi bàn được chọn VÀ trạng thái là 'Trống' -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                    <Condition Binding="{Binding Status}" Value="Trống"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Background" Value="Gold" />
+                                <Setter Property="Foreground" Value="Black" />
+                            </MultiDataTrigger>
+                            <!-- Thêm Trigger để tùy chỉnh màu khi chọn bàn 'Có người' -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                    <Condition Binding="{Binding Status}" Value="Có người"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Background" Value="Crimson" /> <!-- Màu đỏ đậm hơn khi được chọn -->
+                                <Setter Property="Foreground" Value="White" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="STT" Binding="{Binding STT}" Width="40" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Tên bàn" Binding="{Binding Name}" Width="*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="80" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+
+        <!-- Cột 2: Menu đồ uống -->
+        <DockPanel Grid.Column="1" Margin="5">
+            <TextBlock DockPanel.Dock="Top" Text="MENU" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                <ComboBox x:Name="cbCategory" Width="150" Margin="0,0,5,0" DisplayMemberPath="Name"/>
+                <Button Content="Thêm món" Width="80"/>
+            </StackPanel>
+            <DataGrid x:Name="dgMenu" Margin="0,5,0,0" AutoGenerateColumns="False" IsReadOnly="True"
+                      HeadersVisibility="Column" SelectionMode="Single" LoadingRow="DgMenu_LoadingRow"
+                      MouseDoubleClick="DgMenu_MouseDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="STT" Binding="{Binding STT}" Width="40" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Tên đồ uống" Binding="{Binding Name}" Width="*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Mã đồ uống" Binding="{Binding DrinkCode}" Width="*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+
+        <!-- Cột 3: Hóa đơn -->
+        <DockPanel Grid.Column="2" Margin="5">
+            <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,0,0,10">
+                <TextBlock Text="HÓA ĐƠN" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="tbSelectedTable" Text="(Chưa chọn bàn)" FontSize="14" FontStyle="Italic" Foreground="Gray" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <Separator/>
+                <Grid Margin="0,10,0,0">
+                    <TextBlock Text="Tổng cộng:" FontSize="16" FontWeight="Bold" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="tbTotalAmount" Text="0" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Padding="0,0,30,0"/>
+                </Grid>
+                <Button x:Name="btnPay" Content="Thanh toán" Height="40" FontSize="16" FontWeight="Bold" Margin="0,10,0,0" Background="#4CAF50" Foreground="White" Click="BtnPay_Click"/>
+            </StackPanel>
+
+            <DataGrid x:Name="dgBill" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Mã kiểu đồ uống" Binding="{Binding DrinkTypeCode}" Width="30*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="SL" Binding="{Binding Quantity}" Width="10*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Đơn giá" Binding="{Binding Price, StringFormat={}{0:N0}}" Width="20*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Thành tiền" Binding="{Binding TotalPrice, StringFormat={}{0:N0}}" Width="20*" HeaderStyle="{StaticResource CenterAlignedColumn}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTemplateColumn Width="Auto" HeaderStyle="{StaticResource CenterAlignedColumn}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="Xóa" CommandParameter="{Binding}" Click="DeleteBillItem_Click" Style="{StaticResource LinkButton}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Grid>
+</UserControl>

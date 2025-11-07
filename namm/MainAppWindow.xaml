@@ -1,0 +1,48 @@
+<Window x:Class="namm.MainAppWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:namm"
+        mc:Ignorable="d"
+        Title="Chương trình Quản lý Cafe" Height="600" Width="1024"
+        WindowStartupLocation="CenterScreen"> <!-- Xóa Background khỏi Window -->
+    <DockPanel> <!-- Xóa x:Name="rootPanel" -->
+        <Menu DockPanel.Dock="Top" FontSize="14">
+            <MenuItem Click="Home_Click" ToolTip="Quay về màn hình chính">
+                <MenuItem.Header>
+                    <Path Data="M12 2.09954L21 10.0995V21.0001H15V15.0001H9V21.0001H3V10.0995L12 2.09954Z" 
+                          Stroke="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}" StrokeThickness="1.5" Width="16" Height="16" Stretch="Uniform"/>
+                </MenuItem.Header>
+            </MenuItem>
+            <MenuItem Header="_Hệ thống" Click="TopLevelMenuItem_Click">
+                <MenuItem x:Name="miManageEmployees" Header="Quản lí nhân viên" Click="ManageEmployees_Click"/>
+                <MenuItem Header="Đổi mật khẩu" Click="ChangePassword_Click"/>
+                <MenuItem Header="Thiết lập giao diện" Click="InterfaceSettings_Click"/>
+                <Separator/> 
+                <MenuItem x:Name="miDeleteHistory" Header="Xóa lịch sử hóa đơn" Click="DeleteHistory_Click"/>
+                <MenuItem Header="Đăng xuất" Click="Logout_Click"/>
+                <Separator/>
+            </MenuItem>
+            <MenuItem Header="_Quản lí" Click="TopLevelMenuItem_Click">
+                <MenuItem Header="Quản lí bàn" Click="ManageTables_Click"/>
+                <MenuItem Header="Quản lí Đồ uống (Tổng)" Click="ManageMenu_Click" ToolTip="Quản lý danh sách đồ uống chính của quán."/>
+                <MenuItem Header="Quản lí đồ uống pha chế" Click="ManageRecipes_Click" ToolTip="Thiết lập công thức cho đồ uống pha chế."/>
+                <MenuItem Header="Quản lí đồ uống nguyên bản" Click="ManageOriginalDrinks_Click" ToolTip="Thiết lập giá nhập/bán cho đồ uống nguyên bản."/>
+                <MenuItem Header="Quản lí loại đồ uống" Click="ManageCategories_Click"/>
+                <MenuItem Header="Quản lí nguyên liệu" Click="ManageMaterials_Click"/>
+                <MenuItem Header="Quản lí đơn vị tính" Click="ManageUnits_Click"/>
+            </MenuItem>
+            <MenuItem x:Name="miStatistics" Header="_Thống kê" Click="TopLevelMenuItem_Click">
+                <MenuItem x:Name="miEmployeeRevenue" Header="Doanh thu nhân viên" Click="EmployeeRevenue_Click"/>
+                <MenuItem x:Name="miProfitStatistics" Header="Thống kê lợi nhuận" Click="miProfitStatistics_Click"/>
+                <MenuItem Header="Top hàng bán chạy" Click="TopSelling_Click"/>
+                <MenuItem Header="Khách hàng thân thiết" Click="LoyalCustomers_Click"/>
+                <MenuItem x:Name="miInvoiceHistory" Header="Lịch sử hóa đơn" Click="InvoiceHistory_Click"/>
+            </MenuItem>
+        </Menu>
+        <Grid x:Name="MainContent" Margin="10">
+            <!-- Nội dung chính của ứng dụng sẽ được hiển thị ở đây -->
+        </Grid>
+    </DockPanel>
+</Window>

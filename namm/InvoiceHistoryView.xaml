@@ -1,0 +1,75 @@
+<UserControl x:Class="namm.InvoiceHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:namm"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="1000"
+             FontFamily="Segoe UI" Loaded="UserControl_Loaded">
+    <DockPanel Margin="10">
+        <!-- Thanh công cụ lọc -->
+        <Border DockPanel.Dock="Top" Padding="5" Margin="0,0,0,10" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="5"/>
+                <DatePicker x:Name="dpStartDate" Width="120" VerticalContentAlignment="Center" SelectedDateChanged="DpStartDate_SelectedDateChanged"/>
+                <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="15,5,5,5"/>
+                <DatePicker x:Name="dpEndDate" Width="120" VerticalContentAlignment="Center"/>
+                <Button x:Name="btnFilter" Content="Lọc" Width="80" Height="30" Margin="15,0" Click="BtnFilter_Click"/>
+                <TextBlock Text="Tổng doanh thu:" VerticalAlignment="Center" Margin="20,0,5,0" FontWeight="SemiBold"/>
+                <TextBlock x:Name="tbTotalRevenue" Text="0 VNĐ" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Foreground="DarkRed"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Nội dung chính -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Danh sách hóa đơn -->
+            <DataGrid Grid.Column="0" x:Name="dgInvoices" AutoGenerateColumns="False" IsReadOnly="True"
+                      SelectionMode="Single" SelectionChanged="DgInvoices_SelectionChanged" LoadingRow="DgInvoices_LoadingRow"
+                      CanUserSortColumns="True">
+                <DataGrid.Resources>
+                    <!-- Căn giữa cho tất cả tiêu đề cột -->
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    </Style>
+                    <!-- Căn giữa cho nội dung của tất cả các ô -->
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="TextBlock.TextAlignment" Value="Center"/>
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="STT" Binding="{Binding STT}" Width="0.5*"/>
+                    <DataGridTextColumn Header="Mã HĐ" Binding="{Binding ID, StringFormat=D6}" Width="0.8*"/>
+                    <DataGridTextColumn Header="Ngày TT" Binding="{Binding DateCheckOut, StringFormat='dd/MM/yyyy HH:mm'}" Width="1.6*" SortDirection="Descending"/>
+                    <DataGridTextColumn Header="Tên Khách hàng" Binding="{Binding CustomerName}" Width="1.5*"/>
+                    <DataGridTextColumn Header="Mã Khách hàng" Binding="{Binding CustomerCode}" Width="1.3*"/>
+                    <DataGridTextColumn Header="Bàn" Binding="{Binding TableName}" Width="0.5*"/>
+                    <DataGridTextColumn Header="Tổng tiền" Binding="{Binding TotalAmount, StringFormat={}{0:N0} VNĐ}" Width="1.3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextAlignment" Value="Right"/> <!-- Giữ căn phải cho cột tiền để dễ đọc hơn -->
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+
+            <!-- Chi tiết hóa đơn -->
+            <GroupBox Grid.Column="2" Header="Hóa đơn trước đó" FontWeight="SemiBold">
+                <local:InvoicePreviewControl x:Name="invoicePreview" Visibility="Collapsed">
+                    <local:InvoicePreviewControl.LayoutTransform>
+                        <ScaleTransform ScaleX="0.7" ScaleY="0.7" />
+                    </local:InvoicePreviewControl.LayoutTransform>
+                </local:InvoicePreviewControl>
+            </GroupBox>
+        </Grid>
+    </DockPanel>
+</UserControl>

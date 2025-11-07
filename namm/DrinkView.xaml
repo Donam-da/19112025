@@ -1,0 +1,83 @@
+<UserControl x:Class="namm.DrinkView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:namm"
+             mc:Ignorable="d" 
+             d:DesignHeight="550" d:DesignWidth="1000"
+             Loaded="UserControl_Loaded">
+    <Grid Margin="10">
+        <Grid.Resources>
+            <Style x:Key="CenterHeader" TargetType="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            </Style>
+            <Style x:Key="LeftCell" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="Margin" Value="5,0,0,0"/>
+            </Style>
+            <Style x:Key="RightCell" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0,0,5,0"/>
+            </Style>
+            <Style x:Key="CenterCell" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="2,0,2,0"/>
+            </Style>
+        </Grid.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="350"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Cột 1: Danh sách đồ uống -->
+        <DockPanel Grid.Column="0" Margin="0,0,10,0">
+            <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
+                <TextBlock Text="DANH SÁCH ĐỒ UỐNG NGUYÊN BẢN" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <TextBox x:Name="txtSearch" Margin="0,0,0,5" Height="25" ToolTip="Nhập tên đồ uống để tìm kiếm" TextChanged="TxtSearch_TextChanged"/>
+            </StackPanel>
+            <DataGrid x:Name="dgDrinks" AutoGenerateColumns="False" IsReadOnly="True"                      
+                      SelectionMode="Single" SelectionChanged="DgDrinks_SelectionChanged" 
+                      LoadingRow="DgDrinks_LoadingRow">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="STT" Binding="{Binding STT}" Width="0.5*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Tên đồ uống" Binding="{Binding Name}" Width="2.2*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Mã Kiểu Đồ Uống" Binding="{Binding DrinkCode}" Width="1.8*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Loại" Binding="{Binding CategoryName}" Width="1.2*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Giá nhập vào" Binding="{Binding OriginalPrice, StringFormat={}{0:N0}}" Width="1.4*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Giá bán" Binding="{Binding ActualPrice, StringFormat={}{0:N0}}" Width="1.3*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Tồn kho" Binding="{Binding StockQuantity, StringFormat={}{0:G29}}" Width="1*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                    <DataGridTextColumn Header="Trạng thái" Binding="{Binding StatusText}" Width="1*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+
+        <!-- Cột 2: Thông tin chi tiết và chức năng -->
+        <DockPanel Grid.Column="1">
+            <TextBlock DockPanel.Dock="Top" Text="THÔNG TIN CHI TIẾT" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+            <StackPanel>
+                <TextBlock Text="Tên đồ uống:" Margin="0,5,0,2"/>
+                <ComboBox x:Name="cbDrink" Padding="5" DisplayMemberPath="Name" SelectedValuePath="ID" SelectionChanged="CbDrink_SelectionChanged"/>
+
+                <TextBlock Text="Mã kiểu đồ uống:" Margin="0,10,0,2"/>
+                <TextBox x:Name="txtDrinkCode" Padding="5" IsReadOnly="True" Background="#EEEEEE" ToolTip="Mã này được tạo tự động"/>
+
+                <TextBlock Text="Giá nhập vào:" Margin="0,10,0,2"/>
+                <TextBox x:Name="txtPrice" Padding="5"/>
+
+                <TextBlock Text="Giá bán thực tế:" Margin="0,10,0,2"/>
+                <TextBox x:Name="txtActualPrice" Padding="5"/>
+
+                <TextBlock Text="Số lượng tồn kho:" Margin="0,10,0,2"/>
+                <TextBox x:Name="txtStockQuantity" Padding="5"/>
+
+                <CheckBox x:Name="chkIsActive" Content="Sử dụng" IsChecked="True" VerticalAlignment="Center" Margin="0,15,0,10"/>
+
+                <WrapPanel HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <Button x:Name="btnSave" Content="Lưu" Width="80" Margin="5" Click="BtnSave_Click" IsEnabled="{Binding ElementName=cbDrink, Path=SelectedItem, Converter={StaticResource NullToFalseConverter}}"/>
+                </WrapPanel>
+                <Button x:Name="btnReset" Content="Làm mới" Width="80" Margin="5" HorizontalAlignment="Center" Click="BtnReset_Click"/>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</UserControl>
