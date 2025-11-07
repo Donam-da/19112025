@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using System.Windows;
@@ -439,14 +440,71 @@ namespace namm
 
         private void LvSavedImages_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (lvSavedImages.SelectedItem is SavedImage selected)
+            // Nếu chỉ chọn 1 ảnh, hiển thị nó trong preview
+            if (lvSavedImages.SelectedItems.Count == 1 && lvSavedImages.SelectedItem is SavedImage selected)
             {
+                // Chỉ cập nhật preview và ID nếu người dùng chọn một ảnh duy nhất
                 imgPreview.Source = selected.Thumbnail;
                 _selectedSavedImageId = selected.ID;
                 txtImagePath.Text = $"Đã chọn ảnh từ CSDL: {selected.ImageName}";
                 // Reset lựa chọn ảnh mới
                 _selectedImageData = null;
                 _selectedImageFileName = null;
+                btnAddImageToLibrary.IsEnabled = false;
+            }
+            else if (lvSavedImages.SelectedItems.Count > 1)
+            {
+                // Nếu chọn nhiều ảnh, không hiển thị preview và xóa ID đã chọn
+                _selectedSavedImageId = null;
+                txtImagePath.Text = $"Đã chọn {lvSavedImages.SelectedItems.Count} ảnh.";
+            }
+        }
+
+        private void BtnSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            lvSavedImages.SelectAll();
+        }
+
+        private void BtnDeselectAll_Click(object sender, RoutedEventArgs e)
+        {
+            lvSavedImages.UnselectAll();
+        }
+
+        private async void BtnDeleteSelectedImages_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = lvSavedImages.SelectedItems.Cast<SavedImage>().ToList();
+            if (!selectedItems.Any())
+            {
+                MessageBox.Show("Vui lòng chọn ít nhất một ảnh để xóa.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (MessageBox.Show($"Bạn có chắc chắn muốn xóa {selectedItems.Count} ảnh đã chọn không? Hành động này không thể hoàn tác.",
+                "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.No)
+            {
+                return;
+            }
+
+            var idsToDelete = selectedItems.Select(item => item.ID).ToList();
+            string idList = string.Join(",", idsToDelete);
+
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    var command = new SqlCommand($"DELETE FROM InterfaceImages WHERE ID IN ({idList})", connection);
+                    command.CommandTimeout = 120;
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+
+                    MessageBox.Show($"Đã xóa thành công {rowsAffected} ảnh.", "Hoàn tất", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await LoadSavedImagesAsync(); // Tải lại danh sách
+                    await LoadCurrentSettingsAsync(); // Tải lại cài đặt để đảm bảo ảnh active (nếu bị xóa) được cập nhật
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi xóa ảnh: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

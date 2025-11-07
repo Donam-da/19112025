@@ -77,7 +77,7 @@
                 </GroupBox>
 
                 <GroupBox Header="Chọn từ ảnh đã lưu" Padding="10" Margin="0,15,0,0">
-                    <ListView x:Name="lvSavedImages" Height="100" SelectionChanged="LvSavedImages_SelectionChanged">
+                    <ListView x:Name="lvSavedImages" Height="150" SelectionMode="Multiple" SelectionChanged="LvSavedImages_SelectionChanged">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Horizontal"/>
@@ -88,12 +88,22 @@
                                 <Border BorderBrush="Gray" BorderThickness="1" Margin="3" CornerRadius="3">
                                     <StackPanel Orientation="Vertical" Width="80" ToolTip="{Binding ImageName}">
                                         <Image Source="{Binding Thumbnail}" Width="70" Height="70" Stretch="Uniform" Margin="5"/>
-                                        <TextBlock Text="{Binding ImageName}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" FontSize="10"/>
+                                        <TextBlock Text="{Binding ImageName}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" FontSize="10" Margin="0,0,0,5"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
+                    <GroupBox.HeaderTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Chọn từ ảnh đã lưu" VerticalAlignment="Center"/>
+                                <Button x:Name="btnSelectAll" Content="Chọn tất cả" Margin="20,0,5,0" Padding="5,1" Click="BtnSelectAll_Click"/>
+                                <Button x:Name="btnDeselectAll" Content="Bỏ chọn" Margin="0,0,5,0" Padding="5,1" Click="BtnDeselectAll_Click"/>
+                                <Button x:Name="btnDeleteSelected" Content="Xóa đã chọn" Margin="0,0,0,0" Padding="5,1" Background="#DC3545" Foreground="White" Click="BtnDeleteSelectedImages_Click"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </GroupBox.HeaderTemplate>
                 </GroupBox>
 
 
