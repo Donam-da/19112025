@@ -1,8 +1,9 @@
-﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Data.SqlClient;
+using System.IO; // Added for File.Exists
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,7 +16,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace namm
 {
@@ -38,41 +38,52 @@ namespace namm
         {
             try
             {
-                // Đọc các cài đặt đã lưu từ App.config
-                string iconPath = Properties.Settings.Default.LoginIconPath;
-
+                // Tải màu sắc
                 string bgColor = Properties.Settings.Default.LoginIconBgColor;
-                try
+                iconBorder.Background = (SolidColorBrush)new BrushConverter().ConvertFromString(bgColor);
+
+                // Tải ảnh từ cơ sở dữ liệu
+                using (var connection = new SqlConnection(connectionString))
                 {
-                    iconBorder.Background = (SolidColorBrush)new BrushConverter().ConvertFromString(bgColor);
+                    connection.Open();
+                    var command = new SqlCommand("SELECT ImageData FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
+                    var imageData = command.ExecuteScalar() as byte[];
+
+                    if (imageData != null && imageData.Length > 0)
+                    {
+                        imgLoginIcon.Source = LoadImageFromBytes(imageData);
+                    }
+                    else
+                    {
+                        imgLoginIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
+                    }
                 }
-                catch
-                {
-                    // Nếu mã màu lưu bị lỗi, dùng màu mặc định hoặc màu đã được định nghĩa trong XAML
-                }
-
-                imgLoginIcon.Opacity = Properties.Settings.Default.LoginIconOpacity;
-
-                double marginLeft = Properties.Settings.Default.LoginIconMarginLeft;
-                double marginRight = Properties.Settings.Default.LoginIconMarginRight;
-                double marginTop = Properties.Settings.Default.LoginIconMarginTop;
-                double marginBottom = Properties.Settings.Default.LoginIconMarginBottom;
-
-                imgLoginIcon.Margin = UIHelper.GetConstrainedMargin(
-                    marginLeft > 0 ? marginLeft : 30,
-                    marginTop > 0 ? marginTop : 30,
-                    marginRight > 0 ? marginRight : 30,
-                    marginBottom > 0 ? marginBottom : 30
-                );
-
-                // Thiết lập nguồn ảnh
-                imgLoginIcon.Source = new BitmapImage(new Uri(iconPath, UriKind.RelativeOrAbsolute));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Nếu có lỗi (ví dụ: file ảnh bị xóa), sử dụng ảnh mặc định
                 imgLoginIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
+                Debug.WriteLine($"Lỗi khi tải giao diện tùy chỉnh: {ex.Message}");
             }
+        }
+
+        private BitmapImage LoadImageFromBytes(byte[] imageData)
+        {
+            if (imageData == null || imageData.Length == 0) return new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
+
+            var image = new BitmapImage();
+            using (var mem = new MemoryStream(imageData))
+            {
+                mem.Position = 0;
+                image.BeginInit();
+                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = null;
+                image.StreamSource = mem;
+                image.EndInit();
+            }
+            image.Freeze();
+            return image;
         }
 
         private void LoadRememberedUser()

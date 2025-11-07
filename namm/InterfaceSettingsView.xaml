@@ -69,33 +69,7 @@
                     <StackPanel>
                         <Button x:Name="btnSelectImage" Content="Chọn ảnh..." Width="120" HorizontalAlignment="Left" Click="BtnSelectImage_Click"/>
                         <TextBlock Text="Đường dẫn ảnh:" Margin="0,10,0,2" FontStyle="Italic"/>
-                        <TextBox x:Name="txtImagePath" IsReadOnly="True" Background="#f0f0f0"/>
-
-                        <TextBlock Text="Căn lề Icon (Lề càng nhỏ, icon càng lớn):" Margin="0,15,0,5" FontWeight="SemiBold"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Trái:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider Grid.Row="0" Grid.Column="1" x:Name="sliderMarginLeft" Minimum="10" Maximum="80" ValueChanged="Slider_ValueChanged" />
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Phải:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider Grid.Row="1" Grid.Column="1" x:Name="sliderMarginRight" Minimum="10" Maximum="80" ValueChanged="Slider_ValueChanged" />
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Trên:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider Grid.Row="2" Grid.Column="1" x:Name="sliderMarginTop" Minimum="10" Maximum="80" ValueChanged="Slider_ValueChanged" />
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Dưới:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider Grid.Row="3" Grid.Column="1" x:Name="sliderMarginBottom" Minimum="10" Maximum="80" ValueChanged="Slider_ValueChanged" />
-                        </Grid>
-
-                        <TextBlock Text="Độ mờ (0% - 100%):" Margin="0,15,0,2"/>
-                        <Slider x:Name="sliderOpacity" Minimum="0" Maximum="1" ValueChanged="Slider_ValueChanged"/>
+                        <TextBlock x:Name="txtImagePath" Text="(Chưa chọn ảnh nào)" TextWrapping="Wrap" Background="#f0f0f0" Padding="2"/>
                     </StackPanel>
                 </GroupBox>
 

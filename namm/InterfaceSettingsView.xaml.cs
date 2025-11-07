@@ -1,19 +1,25 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SqlClient;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace namm
 {
     public partial class InterfaceSettingsView : UserControl
     {
+        private readonly string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
         private Color selectedAppColor;
         private Color selectedLoginPanelColor;
+
+        // Biến để lưu trữ dữ liệu ảnh đang được chọn, sẵn sàng để lưu
+        private byte[]? _selectedImageData;
+        private string? _selectedImageFileName;
 
         public InterfaceSettingsView()
         {
@@ -22,7 +28,7 @@ namespace namm
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            LoadCurrentSettings();
+            LoadCurrentSettingsAsync();
             PopulateColorPalette(appColorPalette, AppColor_Click);
             PopulateColorPalette(loginPanelColorPalette, LoginPanelColor_Click);
         }
@@ -171,15 +177,6 @@ namespace namm
             }
         }
 
-        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (imgPreview != null)
-            {
-                imgPreview.Margin = new Thickness(sliderMarginLeft.Value, sliderMarginTop.Value, sliderMarginRight.Value, sliderMarginBottom.Value);
-                imgPreview.Opacity = sliderOpacity.Value;
-            }
-        }
-
         private void BtnSelectImage_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -188,85 +185,128 @@ namespace namm
             };
             if (openFileDialog.ShowDialog() == true)
             {
-                txtImagePath.Text = openFileDialog.FileName;
                 try
-                {
-                    imgPreview.Source = new BitmapImage(new Uri(openFileDialog.FileName));
+                {                    
+                    // Đọc dữ liệu ảnh vào mảng byte
+                    _selectedImageData = File.ReadAllBytes(openFileDialog.FileName);
+                    _selectedImageFileName = Path.GetFileName(openFileDialog.FileName);
+
+                    // Cập nhật UI để xem trước
+                    txtImagePath.Text = openFileDialog.FileName;
+                    imgPreview.Source = LoadImageFromBytes(_selectedImageData);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error loading image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Lỗi khi đọc file ảnh: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _selectedImageData = null;
+                    _selectedImageFileName = null;
                 }
             }
         }
 
-        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        private async void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 // Save App Background Color
                 Properties.Settings.Default.AppBackgroundColor = txtAppBackgroundColorHex.Text;
-
                 // Save Login Panel Color
                 Properties.Settings.Default.LoginIconBgColor = txtLoginPanelBackgroundColorHex.Text;
 
-                // Save Image Path and settings
-                Properties.Settings.Default.LoginIconPath = txtImagePath.Text;
-                Properties.Settings.Default.LoginIconMarginLeft = sliderMarginLeft.Value;
-                Properties.Settings.Default.LoginIconMarginRight = sliderMarginRight.Value;
-                Properties.Settings.Default.LoginIconMarginTop = sliderMarginTop.Value;
-                Properties.Settings.Default.LoginIconMarginBottom = sliderMarginBottom.Value;
-                Properties.Settings.Default.LoginIconOpacity = sliderOpacity.Value;
+                // Nếu có ảnh mới được chọn, lưu vào DB
+                if (_selectedImageData != null && _selectedImageFileName != null)
+                {
+                    using (var connection = new SqlConnection(connectionString))
+                    {
+                        await connection.OpenAsync();
+                        using (var transaction = connection.BeginTransaction())
+                        {
+                            // 1. Bỏ kích hoạt tất cả các ảnh đăng nhập cũ
+                            var cmdDeactivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 0 WHERE IsActiveForLogin = 1", connection, transaction);
+                            await cmdDeactivate.ExecuteNonQueryAsync();
+
+                            // 2. Thêm ảnh mới và kích hoạt nó
+                            var cmdInsert = new SqlCommand("INSERT INTO InterfaceImages (ImageName, ImageData, ContentType, IsActiveForLogin) VALUES (@Name, @Data, @Type, 1)", connection, transaction);
+                            cmdInsert.Parameters.AddWithValue("@Name", _selectedImageFileName);
+                            cmdInsert.Parameters.AddWithValue("@Data", _selectedImageData);
+                            cmdInsert.Parameters.AddWithValue("@Type", GetMimeType(_selectedImageFileName)); // Lấy kiểu content
+                            await cmdInsert.ExecuteNonQueryAsync();
+
+                            transaction.Commit();
+                        }
+                    }
+                }
 
                 Properties.Settings.Default.Save();
                 MessageBox.Show("Đã lưu cài đặt thành công! Vui lòng khởi động lại ứng dụng để các thay đổi có hiệu lực.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving settings: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Lỗi khi lưu cài đặt: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void BtnReset_Click(object sender, RoutedEventArgs e)
+        private async void BtnReset_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("Are you sure you want to reset all interface settings to their default values?", "Confirm Reset", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            if (MessageBox.Show("Bạn có chắc chắn muốn đặt lại tất cả cài đặt giao diện về giá trị mặc định không?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 Properties.Settings.Default.Reset();
                 Properties.Settings.Default.Save();
-                LoadCurrentSettings();
-                MessageBox.Show("Settings have been reset to default.", "Reset Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Xóa ảnh đang active trong DB
+                try
+                {
+                    using (var connection = new SqlConnection(connectionString))
+                    {
+                        await connection.OpenAsync();
+                        var cmdDeactivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 0 WHERE IsActiveForLogin = 1", connection);
+                        await cmdDeactivate.ExecuteNonQueryAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                     MessageBox.Show($"Không thể đặt lại ảnh trong CSDL: {ex.Message}", "Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                LoadCurrentSettingsAsync();
+                MessageBox.Show("Cài đặt đã được đặt lại về mặc định.", "Hoàn tất", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
-        private void LoadCurrentSettings()
+        private async void LoadCurrentSettingsAsync()
         {
             try
             {
                 // Load colors
                 var appBgColor = (Color)ColorConverter.ConvertFromString(Properties.Settings.Default.AppBackgroundColor);
                 var loginPanelColor = (Color)ColorConverter.ConvertFromString(Properties.Settings.Default.LoginIconBgColor);
-
                 selectedAppColor = appBgColor;
                 selectedLoginPanelColor = loginPanelColor;
-
-                // For simplicity, we don't try to reverse-engineer the slider values from the saved color.
-                // We just apply the final color.
                 UpdateAppColor();
                 UpdateLoginPanelColor();
 
-                // Load image path and settings
-                txtImagePath.Text = Properties.Settings.Default.LoginIconPath;
-                if (!string.IsNullOrEmpty(txtImagePath.Text) && File.Exists(txtImagePath.Text))
+                // Load active image from DB
+                using (var connection = new SqlConnection(connectionString))
                 {
-                    imgPreview.Source = new BitmapImage(new Uri(txtImagePath.Text));
+                    await connection.OpenAsync();
+                    var command = new SqlCommand("SELECT ImageData, ImageName FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var imageData = (byte[])reader["ImageData"];
+                            var imageName = reader["ImageName"].ToString();
+                            imgPreview.Source = LoadImageFromBytes(imageData);
+                            txtImagePath.Text = $"Ảnh đang dùng từ CSDL: {imageName}";
+                        }
+                        else
+                        {
+                            // Nếu không có ảnh trong DB, dùng ảnh mặc định
+                            imgPreview.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
+                            txtImagePath.Text = "(Chưa có ảnh nào được thiết lập)";
+                        }
+                    }
                 }
-
-                sliderMarginLeft.Value = Properties.Settings.Default.LoginIconMarginLeft;
-                sliderMarginTop.Value = Properties.Settings.Default.LoginIconMarginTop;
-                sliderMarginRight.Value = Properties.Settings.Default.LoginIconMarginRight;
-                sliderMarginBottom.Value = Properties.Settings.Default.LoginIconMarginBottom;
-
-                sliderOpacity.Value = Properties.Settings.Default.LoginIconOpacity;
             }
             catch (Exception ex)
             {
@@ -276,6 +316,40 @@ namespace namm
                 selectedLoginPanelColor = (Color)ColorConverter.ConvertFromString("#D2B48C");
                 UpdateAppColor();
                 UpdateLoginPanelColor();
+            }
+        }
+
+        private BitmapImage LoadImageFromBytes(byte[] imageData)
+        {
+            if (imageData == null || imageData.Length == 0) return new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
+
+            var image = new BitmapImage();
+            using (var mem = new MemoryStream(imageData))
+            {
+                mem.Position = 0;
+                image.BeginInit();
+                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = null;
+                image.StreamSource = mem;
+                image.EndInit();
+            }
+            image.Freeze(); // Tối ưu hóa hiệu suất
+            return image;
+        }
+
+        private string GetMimeType(string fileName)
+        {
+            string extension = Path.GetExtension(fileName).ToLowerInvariant();
+            switch (extension)
+            {
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
+                case ".png":
+                    return "image/png";
+                default:
+                    return "application/octet-stream"; // Kiểu mặc định cho file nhị phân
             }
         }
     }
