@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
@@ -294,7 +294,8 @@ namespace namm
                     SELECT MIN(FLOOR(m.Quantity / r.Quantity))
                     FROM Recipe r
                     JOIN Material m ON r.MaterialID = m.ID
-                    WHERE r.DrinkID = @ID 
+                    JOIN Drink d ON r.DrinkID = d.ID
+                    WHERE r.DrinkID = @ID AND d.IsRecipeActive = 1
                     -- Chỉ tính khi có công thức tồn tại
                     HAVING COUNT(r.DrinkID) > 0", connection);
                 cmdRecipe.Parameters.AddWithValue("@ID", drinkId);

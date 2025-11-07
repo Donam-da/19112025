@@ -57,9 +57,10 @@
                 <CheckBox x:Name="chkIsActive" Content="Hiển thị trên menu" Margin="0,15,0,0" IsChecked="True"/>
 
                 <WrapPanel HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <Button x:Name="btnAdd" Content="Thêm mới" Width="100" Margin="5" Click="BtnAdd_Click"/>
-                    <Button x:Name="btnUpdate" Content="Cập nhật" Width="90" Margin="5" Click="BtnUpdate_Click"/>
-                    <Button x:Name="btnDelete" Content="Xóa" Width="90" Margin="5" Click="BtnDelete_Click" Background="LightCoral"/>
+                    <Button x:Name="btnAdd" Content="Thêm" Width="80" Margin="5" Click="BtnAdd_Click"/>
+                    <Button x:Name="btnUpdate" Content="Sửa" Width="80" Margin="5" Click="BtnUpdate_Click" IsEnabled="False"/>
+                    <Button x:Name="btnHide" Content="Ẩn" Width="80" Margin="5" Click="BtnHide_Click" IsEnabled="False" Background="#FFC107" Foreground="Black"/>
+                    <Button x:Name="btnDelete" Content="Xóa" Width="80" Margin="5" Click="BtnDelete_Click" IsEnabled="False" Background="#DC3545" Foreground="White"/>
                 </WrapPanel>
                 <Button x:Name="btnReset" Content="Làm mới" Width="100" Margin="5,10,5,5" HorizontalAlignment="Center" Click="BtnReset_Click"/>
             </StackPanel>

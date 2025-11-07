@@ -74,13 +74,25 @@ namespace namm
                         ISNULL(c.Name, 'N/A') AS CategoryName 
                     FROM Drink d
                     LEFT JOIN Category c ON d.CategoryID = c.ID
-                    -- Thay đổi logic: hiển thị đồ uống nếu nó có giá nhập nguyên bản > 0
-                    WHERE d.OriginalPrice > 0"; 
+                    -- Logic mới: Hiển thị tất cả đồ uống đã từng được gán giá nguyên bản (kể cả khi giá đó đã được đặt về 0 để ẩn)
+                    -- Điều này đảm bảo các món đã ẩn vẫn còn trong danh sách để quản lý.
+                    WHERE d.ID IN (SELECT DISTINCT DrinkID FROM BillInfo WHERE DrinkType = N'Nguyên bản') OR d.OriginalPrice > 0 OR d.StockQuantity > 0";
 
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 drinkDataTable = new DataTable(); // Initialize the DataTable
                 drinkDataTable.Columns.Add("STT", typeof(int));
+                drinkDataTable.Columns.Add("StatusText", typeof(string));
                 await Task.Run(() => adapter.Fill(drinkDataTable));
+
+                // Sau khi đã đổ dữ liệu vào DataTable, cập nhật cột StatusText
+                foreach (DataRow row in drinkDataTable.Rows)
+                {
+                    // Nếu OriginalPrice > 0 thì là "Hoạt động", ngược lại là "Đã ẩn"
+                    bool isActive = Convert.ToDecimal(row["OriginalPrice"]) > 0;
+                    row["StatusText"] = isActive ? "Hoạt động" : "Đã ẩn";
+                }
+
+
 
                 dgDrinks.ItemsSource = drinkDataTable.DefaultView;
             }
@@ -106,9 +118,16 @@ namespace namm
                 txtDrinkCode.Text = row["DrinkCode"] as string ?? string.Empty;
                 txtPrice.Text = Convert.ToDecimal(row["OriginalPrice"]).ToString("G0"); // Bỏ phần thập phân .00
                 txtActualPrice.Text = Convert.ToDecimal(row["ActualPrice"]).ToString("G0"); // Bỏ phần thập phân .00
+
+                // Cập nhật nội dung nút Ẩn/Hiện
+                bool isHidden = Convert.ToDecimal(row["OriginalPrice"]) == 0;
+                btnHide.Content = isHidden ? "Hiện" : "Ẩn";
+                btnHide.ToolTip = isHidden ? "Kích hoạt lại đồ uống này để bán dưới dạng nguyên bản." : "Ẩn đồ uống này khỏi danh sách bán nguyên bản.";
+
                 txtStockQuantity.Text = Convert.ToDecimal(row["StockQuantity"]).ToString("G0");
                 cbDrink.IsEnabled = false; // Không cho đổi đồ uống khi đang sửa
-                btnDelete.IsEnabled = true; // Bật nút xóa khi chọn một mục
+                btnHide.IsEnabled = true; // Bật nút ẩn
+                btnDelete.IsEnabled = true; // Bật nút xóa
             }
         }
 
@@ -156,7 +175,7 @@ namespace namm
             if (dgDrinks.SelectedItem is DataRowView row)
             {
                 int drinkId = (int)row["ID"];
-                string drinkName = row["Name"].ToString();
+                string drinkName = row["Name"].ToString() ?? "Không tên";
 
                 // Kiểm tra xem đồ uống có tồn tại trong bất kỳ hóa đơn nào không
                 bool isInBill = false;
@@ -175,34 +194,89 @@ namespace namm
 
                 if (isInBill)
                 {
-                    MessageBox.Show($"Không thể xóa đồ uống '{drinkName}' vì đã có lịch sử giao dịch. Bạn có thể ẩn đồ uống này ở trang 'Quản lí Đồ uống (Tổng)'.", "Không thể xóa", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Không thể xóa đồ uống '{drinkName}' vì đã có lịch sử giao dịch. Bạn có thể ẩn đồ uống này thay thế.", "Không thể xóa", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
-                // Nếu không có trong hóa đơn, tiến hành hỏi xóa
                 if (MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn đồ uống '{drinkName}' không? Hành động này sẽ xóa cả công thức pha chế (nếu có) và không thể hoàn tác.", "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
-                        // Xóa công thức liên quan trước, sau đó xóa đồ uống
                         const string deleteQuery = "DELETE FROM Recipe WHERE DrinkID = @ID; DELETE FROM Drink WHERE ID = @ID;";
                         SqlCommand command = new SqlCommand(deleteQuery, connection);
                         command.Parameters.AddWithValue("@ID", drinkId);
-
-                        try
-                        {
-                            await connection.OpenAsync();
-                            await command.ExecuteNonQueryAsync();
-                            MessageBox.Show("Xóa đồ uống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                            await LoadDataAsync(); // Tải lại toàn bộ dữ liệu
-                            ResetFields();
-                        }
-                        catch (SqlException ex)
-                        {
-                            MessageBox.Show($"Lỗi khi xóa đồ uống: {ex.Message}", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+                        MessageBox.Show("Xóa đồ uống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await LoadDataAsync(); // Tải lại toàn bộ dữ liệu
+                        ResetFields();
                     }
                 }
+            }
+        }
+
+        private async void BtnHide_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgDrinks.SelectedItem == null)
+            {
+                MessageBox.Show("Vui lòng chọn một đồ uống để ẩn.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (dgDrinks.SelectedItem is DataRowView row) // Đã sửa lỗi CS0103 ở đây
+            {
+                int drinkId = (int)row["ID"];
+                string drinkName = row["Name"].ToString() ?? "Không tên";
+
+                bool isCurrentlyHidden = Convert.ToDecimal(row["OriginalPrice"]) == 0;
+                string actionText = isCurrentlyHidden ? "hiển thị lại" : "ẩn";
+                string confirmationMessage = isCurrentlyHidden
+                    ? $"Bạn có muốn hiển thị lại đồ uống '{drinkName}' để bán dưới dạng nguyên bản không?"
+                    : $"Bạn có chắc chắn muốn ẩn đồ uống '{drinkName}' khỏi danh sách đồ uống nguyên bản không? Đồ uống này sẽ không còn được bán dưới dạng nguyên bản nữa nhưng vẫn có thể bán dưới dạng pha chế nếu có công thức.";
+
+                if (MessageBox.Show(confirmationMessage, "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    // Nếu hành động là "Hiện", không làm gì cả. Người dùng cần nhập giá mới và nhấn Lưu.
+                    if (isCurrentlyHidden)
+                    {
+                        MessageBox.Show($"Để kích hoạt lại '{drinkName}', vui lòng nhập giá nhập mới và nhấn 'Lưu'.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        txtPrice.Focus(); // Focus vào ô nhập giá
+                        txtPrice.SelectAll();
+                        return;
+                    }
+
+                    // Nếu hành động là "Ẩn", cập nhật OriginalPrice về 0
+                    try
+                    {
+                        using (SqlConnection connection = new SqlConnection(connectionString))
+                        {
+                            const string updateQuery = "UPDATE Drink SET OriginalPrice = 0 WHERE ID = @ID;";
+                            SqlCommand command = new SqlCommand(updateQuery, connection);
+                            command.Parameters.AddWithValue("@ID", drinkId);
+
+                            await connection.OpenAsync();
+                            await command.ExecuteNonQueryAsync();
+                        }
+
+                        MessageBox.Show($"Đã ẩn đồ uống '{drinkName}' thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await LoadDataAsync(); // Tải lại dữ liệu để cập nhật bảng
+                        ResetFields();
+                    }
+                    catch (SqlException ex)
+                    {
+                        MessageBox.Show($"Lỗi khi ẩn đồ uống: {ex.Message}", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        private void UpdateStatusText()
+        {
+            if (drinkDataTable == null) return;
+            foreach (DataRow row in drinkDataTable.Rows)
+            {
+                // Nếu OriginalPrice > 0 thì là "Hoạt động", ngược lại là "Ẩn"
+                row["StatusText"] = (Convert.ToDecimal(row["OriginalPrice"]) > 0) ? "Hoạt động" : "Đã ẩn";
             }
         }
 
@@ -256,8 +330,10 @@ namespace namm
             txtActualPrice.Clear();
             txtStockQuantity.Clear();
             dgDrinks.SelectedItem = null;
-            cbDrink.IsEnabled = true;
-            btnDelete.IsEnabled = false; // Tắt nút xóa khi làm mới
+            cbDrink.IsEnabled = true; // Cho phép chọn đồ uống mới
+            btnHide.Content = "Ẩn";
+            btnHide.IsEnabled = false; // Tắt nút ẩn
+            btnDelete.IsEnabled = false; // Tắt nút xóa
         }
 
         private bool ValidateInput()

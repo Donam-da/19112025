@@ -50,6 +50,7 @@ namespace namm
                 await LoadDrinksToComboBox();
                 await LoadMaterialsToComboBox();
                 await LoadRecipeSummary();
+                btnToggleRecipeActive.IsEnabled = false;
             }
             catch (Exception ex)
             {
@@ -98,6 +99,7 @@ namespace namm
                     txtActualPrice.Clear();
                     dgCurrentRecipe.Items.Refresh();
                     await UpdateCurrentRecipeCost();
+                    btnToggleRecipeActive.IsEnabled = false;
                     // Không cần làm gì thêm vì không còn lưới chi tiết
                 }
             }
@@ -116,6 +118,7 @@ namespace namm
                     WITH RecipeCosts AS (
                         SELECT 
                             r.DrinkID,
+                            d.IsRecipeActive, -- Thêm d.IsRecipeActive vào đây
                             m.Name AS MaterialName,
                             r.Quantity AS RecipeQuantity, 
                             m.Quantity AS StockQuantity,
@@ -123,11 +126,13 @@ namespace namm
                             CONCAT(m.Name, '(', FORMAT(r.Quantity, 'G29'), ')') AS RecipePart
                         FROM Recipe r
                         JOIN Material m ON r.MaterialID = m.ID
+                        JOIN Drink d ON r.DrinkID = d.ID -- Join bảng Drink vào CTE này
                     )
                     SELECT 
                         d.ID AS DrinkID,
                         d.Name AS DrinkName,
                         d.ActualPrice,
+                        d.IsRecipeActive,
                         ISNULL(STRING_AGG(rc.RecipePart, ' + '), 'None') AS RecipeSummary,
                         ISNULL(SUM(rc.Cost), 0) AS TotalCost, 
                         -- Tính số lượng tối đa có thể làm
@@ -136,7 +141,7 @@ namespace namm
                         d.DrinkCode
                     FROM Drink d 
                     LEFT JOIN RecipeCosts rc ON d.ID = rc.DrinkID
-                    GROUP BY d.ID, d.Name, d.ActualPrice, d.DrinkCode
+                    GROUP BY d.ID, d.Name, d.ActualPrice, d.DrinkCode, d.IsRecipeActive
                     ORDER BY d.Name;
                 ";
 
@@ -149,10 +154,15 @@ namespace namm
 
                 // Thêm cột STT và điền dữ liệu
                 tempTable.Columns.Add("STT", typeof(int));
+                tempTable.Columns.Add("RecipeStatus", typeof(string));
 
                 for (int i = 0; i < tempTable.Rows.Count; i++)
                 {
-                    tempTable.Rows[i]["STT"] = i + 1;
+                    var row = tempTable.Rows[i];
+                    row["STT"] = i + 1;
+                    // Xử lý DBNull.Value cho IsRecipeActive
+                    bool isRecipeActive = (row["IsRecipeActive"] != DBNull.Value) ? Convert.ToBoolean(row["IsRecipeActive"]) : true;
+                    row["RecipeStatus"] = isRecipeActive ? "Đang hoạt động" : "Đã ẩn";
                 }
 
                 recipeSummaryTable = tempTable;
@@ -382,6 +392,44 @@ namespace namm
             }
         }
 
+        private async void BtnToggleRecipeActive_Click(object sender, RoutedEventArgs e)
+        {
+            if (cbDrink.SelectedItem == null)
+            {
+                MessageBox.Show("Vui lòng chọn một đồ uống.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var selectedDrink = (DataRowView)cbDrink.SelectedItem;
+            int drinkId = (int)selectedDrink["ID"];
+            string drinkName = selectedDrink["Name"].ToString() ?? "Không tên";
+            // Lấy trạng thái hiện tại từ ComboBox, vì nó luôn có dữ liệu mới nhất
+            bool currentStatus = Convert.ToBoolean(selectedDrink["IsRecipeActive"]);
+            string actionText = currentStatus ? "ẩn" : "hiển thị";
+
+            if (MessageBox.Show($"Bạn có chắc chắn muốn {actionText} công thức của đồ uống '{drinkName}' không?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+            {
+                return;
+            }
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                // Đảo ngược trạng thái IsRecipeActive
+                var command = new SqlCommand("UPDATE Drink SET IsRecipeActive = @NewStatus WHERE ID = @DrinkID", connection);
+                command.Parameters.AddWithValue("@NewStatus", !currentStatus);
+                command.Parameters.AddWithValue("@DrinkID", drinkId);
+
+                await connection.OpenAsync();
+                await command.ExecuteNonQueryAsync();
+
+                ShowNotification($"Đã {actionText} công thức thành công!");
+                // Tải lại dữ liệu để cập nhật giao diện
+                await LoadDrinksToComboBox(); // Cần tải lại để cbDrink có trạng thái mới
+                await LoadRecipeSummary();
+                cbDrink.SelectedValue = drinkId; // Chọn lại đồ uống vừa thao tác
+            }
+        }
+
         private async void DeleteIngredient_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as Button)?.CommandParameter is RecipeIngredient ingredientToRemove)
@@ -427,6 +475,12 @@ namespace namm
                     // Cập nhật các trường thông tin bên trái
                     txtDrinkCode.Text = (row["DrinkCode"] as string ?? "") + "_PC";
                     txtActualPrice.Text = Convert.ToDecimal(row["ActualPrice"]).ToString("G0");
+                    
+                    // Bật nút và cập nhật text cho nút Ẩn/Hiện
+                    btnToggleRecipeActive.IsEnabled = true;
+                    bool isRecipeActive = Convert.ToBoolean(row["IsRecipeActive"]);
+                    btnToggleRecipeActive.Content = isRecipeActive ? "Ẩn Công thức" : "Hiện Công thức";
+
                     await LoadRecipeForDrink(drinkId); // Tải chi tiết công thức
 
                     // Chỉ thực hiện nếu lựa chọn trong ComboBox chưa đúng

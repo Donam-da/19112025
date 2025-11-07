@@ -56,7 +56,7 @@ namespace namm
                             ELSE N'Chưa gán' 
                         END AS DrinkType
                     FROM Drink d 
-                    LEFT JOIN Category c ON d.CategoryID = c.ID";
+                    LEFT JOIN Category c ON d.CategoryID = c.ID ORDER BY d.Name"; // Removed WHERE d.IsActive = 1
 
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 menuDataTable = new DataTable();
@@ -103,7 +103,7 @@ namespace namm
                 // Cập nhật trạng thái các nút: Tắt Thêm, Bật Sửa/Xóa
                 btnAdd.IsEnabled = false;
                 btnUpdate.IsEnabled = true;
-                btnDelete.IsEnabled = true;
+                btnHide.IsEnabled = true; // Sửa từ btnDelete sang btnHide
             }
             else
             {
@@ -171,6 +171,37 @@ namespace namm
             }
         }
 
+        private async void BtnHide_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMenuItems.SelectedItem == null)
+            {
+                MessageBox.Show("Vui lòng chọn một đồ uống để ẩn.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (MessageBox.Show("Bạn có chắc chắn muốn ẩn đồ uống này? Đồ uống sẽ không còn hiển thị trên menu bán hàng nhưng vẫn giữ lại lịch sử giao dịch.", "Xác nhận ẩn", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                if (dgMenuItems.SelectedItem is DataRowView row)
+                {
+                    int drinkId = (int)row["ID"];
+
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        // Thay đổi từ DELETE sang UPDATE IsActive = 0
+                        const string query = "UPDATE Drink SET IsActive = 0 WHERE ID = @ID";
+                        SqlCommand command = new SqlCommand(query, connection);
+                        command.Parameters.AddWithValue("@ID", drinkId);
+
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+                        MessageBox.Show("Ẩn đồ uống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await LoadMenuItems();
+                        ResetFields();
+                    }
+                }
+            }
+        }
+
         private async void BtnDelete_Click(object sender, RoutedEventArgs e)
         {
             if (dgMenuItems.SelectedItem == null)
@@ -179,20 +210,39 @@ namespace namm
                 return;
             }
 
-            if (MessageBox.Show("Bạn có chắc chắn muốn xóa vĩnh viễn đồ uống này? Hành động này không thể hoàn tác.", "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (dgMenuItems.SelectedItem is DataRowView row)
             {
-                if (dgMenuItems.SelectedItem is DataRowView row)
-                {
-                    int drinkId = (int)row["ID"];
+                int drinkId = (int)row["ID"];
+                string drinkName = row["Name"].ToString() ?? "Không tên";
 
+                // Kiểm tra xem đồ uống có tồn tại trong bất kỳ hóa đơn nào không
+                bool isInBill = false;
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    const string checkQuery = "SELECT TOP 1 1 FROM BillInfo WHERE DrinkID = @DrinkID";
+                    SqlCommand checkCommand = new SqlCommand(checkQuery, connection);
+                    checkCommand.Parameters.AddWithValue("@DrinkID", drinkId);
+                    await connection.OpenAsync();
+                    var result = await checkCommand.ExecuteScalarAsync();
+                    if (result != null)
+                    {
+                        isInBill = true;
+                    }
+                }
+
+                if (isInBill)
+                {
+                    MessageBox.Show($"Không thể xóa đồ uống '{drinkName}' vì đã có lịch sử giao dịch. Bạn có thể ẩn đồ uống này thay thế.", "Không thể xóa", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn đồ uống '{drinkName}' không? Hành động này sẽ xóa cả công thức pha chế (nếu có) và không thể hoàn tác.", "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
-                        // This query will permanently delete the drink.
-                        // Ensure cascading deletes are set up in the DB for related tables (like Recipe) or handle them here.
-                        const string query = "DELETE FROM Drink WHERE ID = @ID";
-                        SqlCommand command = new SqlCommand(query, connection);
+                        const string deleteQuery = "DELETE FROM Recipe WHERE DrinkID = @ID; DELETE FROM Drink WHERE ID = @ID;";
+                        SqlCommand command = new SqlCommand(deleteQuery, connection);
                         command.Parameters.AddWithValue("@ID", drinkId);
-
                         await connection.OpenAsync();
                         await command.ExecuteNonQueryAsync();
                         MessageBox.Show("Xóa đồ uống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -274,7 +324,7 @@ namespace namm
             // Đặt lại trạng thái các nút: Bật Thêm, Tắt Sửa/Xóa
             btnAdd.IsEnabled = true;
             btnUpdate.IsEnabled = false;
-            btnDelete.IsEnabled = false;
+            btnHide.IsEnabled = false; // Sửa từ btnDelete sang btnHide
         }
     }
 }

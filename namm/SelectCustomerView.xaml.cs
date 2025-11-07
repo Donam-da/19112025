@@ -52,7 +52,24 @@ namespace namm
         {
             using (var connection = new SqlConnection(connectionString))
             {
-                const string query = "SELECT ID, Name, PhoneNumber, Address, CustomerCode FROM Customer ORDER BY Name";
+                const string query = @"
+                    SELECT
+                        c.ID,
+                        c.Name,
+                        c.PhoneNumber,
+                        c.Address,
+                        c.CustomerCode,
+                        COUNT(DISTINCT b.ID) AS PurchaseCount,
+                        ISNULL(SUM(b.TotalAmount), 0) AS TotalSpent,
+                        (SELECT FORMAT(ISNULL(MAX(dr.DiscountPercent), 0), 'G29') + '%' 
+                         FROM DiscountRule dr 
+                         WHERE (dr.CriteriaType = N'Số lần mua' AND COUNT(DISTINCT b.ID) >= dr.Threshold) 
+                            OR (dr.CriteriaType = N'Tổng chi tiêu' AND ISNULL(SUM(b.TotalAmount), 0) >= dr.Threshold)) AS DiscountLevel
+                    FROM Customer c
+                    LEFT JOIN Bill b ON c.ID = b.IdCustomer AND b.Status = 1
+                    GROUP BY c.ID, c.Name, c.CustomerCode, c.PhoneNumber, c.Address
+                    ORDER BY c.Name;
+                ";
                 var adapter = new SqlDataAdapter(query, connection);
                 customerDataTable = new DataTable();
                 customerDataTable.Columns.Add("STT", typeof(int));

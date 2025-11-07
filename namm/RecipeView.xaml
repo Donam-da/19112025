@@ -74,10 +74,16 @@
                 <TextBlock Text="Giá bán cho khách:" Margin="0,10,0,2"/>
                 <TextBox x:Name="txtActualPrice" Padding="5"/>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                    <Button x:Name="btnSaveRecipe" Content="Lưu Công Thức" Width="150" Height="35" FontWeight="Bold" Click="BtnSaveRecipe_Click"/>
-                    <Button x:Name="btnRemoveRecipe" Content="Gỡ Công Thức" Width="120" Height="35" Margin="10,0,0,0" Click="BtnRemoveRecipe_Click" ToolTip="Xóa công thức và các nguyên liệu liên quan khỏi đồ uống này."/>
-                </StackPanel>
+                <Grid Margin="0,15,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0" x:Name="btnSaveRecipe" Content="Lưu công thức" Width="140" HorizontalAlignment="Center" Margin="0,0,0,5" Click="BtnSaveRecipe_Click"/>
+                    <Button Grid.Row="1" x:Name="btnToggleRecipeActive" Content="Ẩn/Hiện Công thức" Width="140" HorizontalAlignment="Center" Margin="0,5,0,5" Click="BtnToggleRecipeActive_Click" IsEnabled="False" Background="#FFC107" Foreground="Black"/>
+                    <Button Grid.Row="2" x:Name="btnRemoveRecipe" Content="Gỡ công thức" Width="140" HorizontalAlignment="Center" Margin="0,5,0,0" Click="BtnRemoveRecipe_Click" Background="#DC3545" Foreground="White"/>
+                </Grid>
             </StackPanel>
         </DockPanel>
 
@@ -93,6 +99,7 @@
                     <DataGridTextColumn Header="Nguyên liệu" Binding="{Binding RecipeSummary}" Width="3*" HeaderStyle="{StaticResource CenterAlignedColumnHeader}" ElementStyle="{StaticResource CenterAlignedCell}"/>
                     <DataGridTextColumn Header="Chi phí" Binding="{Binding TotalCost, StringFormat={}{0:N0}}" Width="1*" HeaderStyle="{StaticResource CenterAlignedColumnHeader}" ElementStyle="{StaticResource CenterAlignedCell}"/>
                     <DataGridTextColumn Header="Giá bán" Binding="{Binding ActualPrice, StringFormat={}{0:N0}}" Width="1*" HeaderStyle="{StaticResource CenterAlignedColumnHeader}" ElementStyle="{StaticResource CenterAlignedCell}"/>
+                    <DataGridTextColumn Header="Trạng thái CT" Binding="{Binding RecipeStatus}" Width="1*" HeaderStyle="{StaticResource CenterAlignedColumnHeader}" ElementStyle="{StaticResource CenterAlignedCell}"/>
                     <DataGridTextColumn Header="Có thể làm" Binding="{Binding MaxCanMake}" Width="1*" HeaderStyle="{StaticResource CenterAlignedColumnHeader}" ElementStyle="{StaticResource CenterAlignedCell}"/>
                 </DataGrid.Columns>
             </DataGrid>
