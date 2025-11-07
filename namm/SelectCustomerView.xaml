@@ -64,8 +64,8 @@
         <!-- Nội dung chính -->
         <Grid Grid.Row="1" Margin="10,0,10,10">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*"/>
                 <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Cột trái: Danh sách khách hàng -->
@@ -108,13 +108,13 @@
                     </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="STT" Binding="{Binding STT}" Width="40"/>
-                        <DataGridTextColumn Header="Tên khách hàng" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Số điện thoại" Binding="{Binding PhoneNumber}" Width="120"/>
+                        <DataGridTextColumn Header="Tên K.Hàng" Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="Số điện thoại" Binding="{Binding PhoneNumber}" Width="105"/>
                         <DataGridTextColumn Header="Mã khách hàng" Binding="{Binding CustomerCode}" Width="120"/>
                         <DataGridTextColumn Header="Địa chỉ" Binding="{Binding Address}" Width="*"/>
-                        <DataGridTextColumn Header="Số lần mua" Binding="{Binding PurchaseCount}" Width="1*"/>
+                        <DataGridTextColumn Header="SL mua" Binding="{Binding PurchaseCount}" Width="0.8*"/>
                         <DataGridTextColumn Header="Tổng chi tiêu" Binding="{Binding TotalSpent, StringFormat=N0}" Width="1.2*"/>
-                        <DataGridTextColumn Header="Mức giảm" Binding="{Binding DiscountLevel}" Width="1*"/>
+                        <DataGridTextColumn Header="Mức giảm" Binding="{Binding DiscountLevel}" Width="0.8*"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

@@ -62,7 +62,7 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                const string query = "SELECT ID, Name, DrinkCode, IsActive FROM Drink ORDER BY Name";
+                const string query = "SELECT ID, Name, DrinkCode, IsActive, IsRecipeActive FROM Drink ORDER BY Name";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 DataTable drinkTable = new DataTable();
                 await Task.Run(() => adapter.Fill(drinkTable));
