@@ -29,12 +29,17 @@ namespace namm
         public MainWindow()
         {
             InitializeComponent();
-            LoadCustomInterface();
             LoadRememberedUser();
-            this.Loaded += (s, e) => txtUsername.Focus(); // Focus vào ô username khi cửa sổ được tải
+            this.Loaded += MainWindow_Loaded; // Attach Loaded event
         }
 
-        private void LoadCustomInterface()
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await LoadCustomInterface(); // Await the async method
+            txtUsername.Focus(); // Focus vào ô username khi cửa sổ được tải
+        }
+
+        private async Task LoadCustomInterface()
         {
             try
             {
@@ -45,13 +50,14 @@ namespace namm
                 // Tải ảnh từ cơ sở dữ liệu
                 using (var connection = new SqlConnection(connectionString))
                 {
-                    connection.Open();
+                    await connection.OpenAsync(); // Use async version
                     var command = new SqlCommand("SELECT ImageData FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
-                    var imageData = command.ExecuteScalar() as byte[];
+                    command.CommandTimeout = 120; // Tăng thời gian chờ lên 120 giây
+                    var imageData = await command.ExecuteScalarAsync() as byte[]; // Use async version
 
                     if (imageData != null && imageData.Length > 0)
                     {
-                        imgLoginIcon.Source = LoadImageFromBytes(imageData);
+                        imgLoginIcon.Source = await Task.Run(() => LoadImageFromBytes(imageData)); // Offload image conversion
                     }
                     else
                     {

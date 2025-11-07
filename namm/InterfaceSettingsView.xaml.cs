@@ -1,8 +1,10 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,15 +13,25 @@ using System.Windows.Media.Imaging;
 
 namespace namm
 {
+    public class SavedImage
+    {
+        public int ID { get; set; }
+        public string ImageName { get; set; } = string.Empty;
+        public byte[] ImageData { get; set; } = Array.Empty<byte>();
+        public BitmapImage? Thumbnail { get; set; }
+    }
+
     public partial class InterfaceSettingsView : UserControl
     {
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
         private Color selectedAppColor;
         private Color selectedLoginPanelColor;
 
-        // Biến để lưu trữ dữ liệu ảnh đang được chọn, sẵn sàng để lưu
+        // Dữ liệu cho ảnh MỚI được tải lên
         private byte[]? _selectedImageData;
         private string? _selectedImageFileName;
+        // ID của ảnh ĐÃ LƯU được chọn từ ListView
+        private int? _selectedSavedImageId;
 
         public InterfaceSettingsView()
         {
@@ -31,6 +43,7 @@ namespace namm
             LoadCurrentSettingsAsync();
             PopulateColorPalette(appColorPalette, AppColor_Click);
             PopulateColorPalette(loginPanelColorPalette, LoginPanelColor_Click);
+            LoadSavedImagesAsync();
         }
 
         private void PopulateColorPalette(Panel palette, RoutedEventHandler colorClickHandler)
@@ -177,7 +190,7 @@ namespace namm
             }
         }
 
-        private void BtnSelectImage_Click(object sender, RoutedEventArgs e)
+        private async void BtnSelectImage_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
@@ -186,14 +199,19 @@ namespace namm
             if (openFileDialog.ShowDialog() == true)
             {
                 try
-                {                    
+                {
                     // Đọc dữ liệu ảnh vào mảng byte
-                    _selectedImageData = File.ReadAllBytes(openFileDialog.FileName);
+                    _selectedImageData = await Task.Run(() => File.ReadAllBytes(openFileDialog.FileName)); // Offload file reading
                     _selectedImageFileName = Path.GetFileName(openFileDialog.FileName);
 
                     // Cập nhật UI để xem trước
                     txtImagePath.Text = openFileDialog.FileName;
-                    imgPreview.Source = LoadImageFromBytes(_selectedImageData);
+                    imgPreview.Source = await Task.Run(() => LoadImageFromBytes(_selectedImageData)); // Offload image conversion
+
+                    // Reset lựa chọn ảnh đã lưu vì ta đang ưu tiên ảnh mới
+                    _selectedSavedImageId = null;
+                    lvSavedImages.SelectedItem = null;
+                    btnAddImageToLibrary.IsEnabled = true; // Enable the "Add to Library" button
                 }
                 catch (Exception ex)
                 {
@@ -201,6 +219,50 @@ namespace namm
                     _selectedImageData = null;
                     _selectedImageFileName = null;
                 }
+            }
+        }
+
+        private async void BtnAddImageToLibrary_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedImageData == null || string.IsNullOrEmpty(_selectedImageFileName))
+            {
+                MessageBox.Show("Vui lòng chọn một ảnh từ máy tính trước khi thêm vào thư viện.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (MessageBox.Show($"Bạn có muốn thêm ảnh '{_selectedImageFileName}' vào thư viện ảnh không?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+            {
+                return;
+            }
+
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    var cmdInsert = new SqlCommand("INSERT INTO InterfaceImages (ImageName, ImageData, ContentType, IsActiveForLogin) OUTPUT INSERTED.ID VALUES (@Name, @Data, @Type, 0)", connection);
+                    cmdInsert.Parameters.AddWithValue("@Name", _selectedImageFileName);
+                    cmdInsert.Parameters.AddWithValue("@Data", _selectedImageData);
+                    cmdInsert.Parameters.AddWithValue("@Type", GetMimeType(_selectedImageFileName));
+                    cmdInsert.CommandTimeout = 120;
+
+                    int newImageId = (int)await cmdInsert.ExecuteScalarAsync();
+
+                    MessageBox.Show($"Ảnh '{_selectedImageFileName}' đã được thêm vào thư viện thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // Clear the selected new image data
+                    _selectedImageData = null;
+                    _selectedImageFileName = null;
+                    txtImagePath.Text = "(Chưa chọn ảnh nào)";
+                    btnAddImageToLibrary.IsEnabled = false; // Disable the button
+
+                    // Reload saved images to show the newly added one
+                    await LoadSavedImagesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi thêm ảnh vào thư viện: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -213,27 +275,46 @@ namespace namm
                 // Save Login Panel Color
                 Properties.Settings.Default.LoginIconBgColor = txtLoginPanelBackgroundColorHex.Text;
 
-                // Nếu có ảnh mới được chọn, lưu vào DB
-                if (_selectedImageData != null && _selectedImageFileName != null)
+                using (var connection = new SqlConnection(connectionString))
                 {
-                    using (var connection = new SqlConnection(connectionString))
+                    await connection.OpenAsync();
+                    using (var transaction = connection.BeginTransaction())
                     {
-                        await connection.OpenAsync();
-                        using (var transaction = connection.BeginTransaction())
+                        // 1. Luôn bỏ kích hoạt tất cả các ảnh đăng nhập cũ
+                        var cmdDeactivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 0 WHERE IsActiveForLogin = 1", connection, transaction);
+                            cmdDeactivate.CommandTimeout = 120; // Tăng thời gian chờ
+                        await cmdDeactivate.ExecuteNonQueryAsync();
+
+                        // 2. Xử lý logic lưu ảnh
+                        if (_selectedImageData != null && _selectedImageFileName != null)
                         {
-                            // 1. Bỏ kích hoạt tất cả các ảnh đăng nhập cũ
-                            var cmdDeactivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 0 WHERE IsActiveForLogin = 1", connection, transaction);
-                            await cmdDeactivate.ExecuteNonQueryAsync();
-
-                            // 2. Thêm ảnh mới và kích hoạt nó
-                            var cmdInsert = new SqlCommand("INSERT INTO InterfaceImages (ImageName, ImageData, ContentType, IsActiveForLogin) VALUES (@Name, @Data, @Type, 1)", connection, transaction);
+                            // Trường hợp 1: Người dùng tải lên ảnh MỚI
+                            var cmdInsert = new SqlCommand("INSERT INTO InterfaceImages (ImageName, ImageData, ContentType, IsActiveForLogin) OUTPUT INSERTED.ID VALUES (@Name, @Data, @Type, 1)", connection, transaction);
                             cmdInsert.Parameters.AddWithValue("@Name", _selectedImageFileName);
+                            cmdInsert.CommandTimeout = 120; // Tăng thời gian chờ
                             cmdInsert.Parameters.AddWithValue("@Data", _selectedImageData);
-                            cmdInsert.Parameters.AddWithValue("@Type", GetMimeType(_selectedImageFileName)); // Lấy kiểu content
-                            await cmdInsert.ExecuteNonQueryAsync();
-
-                            transaction.Commit();
+                            cmdInsert.Parameters.AddWithValue("@Type", GetMimeType(_selectedImageFileName));
+                            // Lấy ID của ảnh vừa insert để có thể tải lại danh sách
+                            var newImageId = (int)await cmdInsert.ExecuteScalarAsync();
+                            
+                            // Tải lại danh sách ảnh đã lưu để bao gồm ảnh mới
+                            await LoadSavedImagesAsync();
                         }
+                        else if (_selectedSavedImageId.HasValue)
+                        {
+                            // Trường hợp 2: Người dùng chọn ảnh ĐÃ CÓ
+                            var cmdActivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 1 WHERE ID = @ID", connection, transaction);
+                            cmdActivate.CommandTimeout = 120; // Tăng thời gian chờ
+                            cmdActivate.Parameters.AddWithValue("@ID", _selectedSavedImageId.Value);
+                            await cmdActivate.ExecuteNonQueryAsync();
+                        }
+                        // Trường hợp 3: Người dùng không thay đổi ảnh, chỉ đổi màu. Không cần làm gì thêm.
+
+                        transaction.Commit();
+
+                        // Reset các biến tạm
+                        _selectedImageData = null;
+                        _selectedImageFileName = null;
                     }
                 }
 
@@ -259,6 +340,7 @@ namespace namm
                     using (var connection = new SqlConnection(connectionString))
                     {
                         await connection.OpenAsync();
+                        // Lệnh này thường nhanh, nhưng thêm timeout để nhất quán
                         var cmdDeactivate = new SqlCommand("UPDATE InterfaceImages SET IsActiveForLogin = 0 WHERE IsActiveForLogin = 1", connection);
                         await cmdDeactivate.ExecuteNonQueryAsync();
                     }
@@ -268,12 +350,12 @@ namespace namm
                      MessageBox.Show($"Không thể đặt lại ảnh trong CSDL: {ex.Message}", "Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
-                LoadCurrentSettingsAsync();
+                await LoadCurrentSettingsAsync();
                 MessageBox.Show("Cài đặt đã được đặt lại về mặc định.", "Hoàn tất", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
-        private async void LoadCurrentSettingsAsync()
+        private async Task LoadCurrentSettingsAsync()
         {
             try
             {
@@ -290,13 +372,14 @@ namespace namm
                 {
                     await connection.OpenAsync();
                     var command = new SqlCommand("SELECT ImageData, ImageName FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
+                    command.CommandTimeout = 120; // Tăng thời gian chờ lên 120 giây
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
                             var imageData = (byte[])reader["ImageData"];
                             var imageName = reader["ImageName"].ToString();
-                            imgPreview.Source = LoadImageFromBytes(imageData);
+                            imgPreview.Source = await Task.Run(() => LoadImageFromBytes(imageData));
                             txtImagePath.Text = $"Ảnh đang dùng từ CSDL: {imageName}";
                         }
                         else
@@ -316,6 +399,54 @@ namespace namm
                 selectedLoginPanelColor = (Color)ColorConverter.ConvertFromString("#D2B48C");
                 UpdateAppColor();
                 UpdateLoginPanelColor();
+            }
+        }
+
+        private async Task LoadSavedImagesAsync()
+        {
+            var savedImages = new ObservableCollection<SavedImage>();
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    // Lấy các ảnh gần đây nhất lên đầu
+                    var command = new SqlCommand("SELECT ID, ImageName, ImageData FROM InterfaceImages ORDER BY DateCreated DESC", connection);
+                    command.CommandTimeout = 120; // Tăng thời gian chờ lên 120 giây (2 phút)
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var imageData = (byte[])reader["ImageData"];
+                            var savedImage = new SavedImage
+                            {
+                                ID = reader.GetInt32(0),
+                                ImageName = reader.GetString(1),
+                                ImageData = imageData,
+                                Thumbnail = await Task.Run(() => LoadImageFromBytes(imageData)) // Tạo thumbnail trên luồng nền
+                            };
+                            savedImages.Add(savedImage);
+                        }
+                    }
+                }
+                lvSavedImages.ItemsSource = savedImages;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Không thể tải danh sách ảnh đã lưu: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void LvSavedImages_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lvSavedImages.SelectedItem is SavedImage selected)
+            {
+                imgPreview.Source = selected.Thumbnail;
+                _selectedSavedImageId = selected.ID;
+                txtImagePath.Text = $"Đã chọn ảnh từ CSDL: {selected.ImageName}";
+                // Reset lựa chọn ảnh mới
+                _selectedImageData = null;
+                _selectedImageFileName = null;
             }
         }
 

@@ -67,11 +67,35 @@
 
                 <GroupBox Header="Tùy chỉnh Icon" Padding="10" Margin="0,15,0,0">
                     <StackPanel>
-                        <Button x:Name="btnSelectImage" Content="Chọn ảnh..." Width="120" HorizontalAlignment="Left" Click="BtnSelectImage_Click"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="btnSelectImage" Content="Chọn ảnh..." Width="120" HorizontalAlignment="Left" Click="BtnSelectImage_Click"/>
+                            <Button x:Name="btnAddImageToLibrary" Content="Thêm vào thư viện" Width="120" Margin="10,0,0,0" Click="BtnAddImageToLibrary_Click" IsEnabled="False"/>
+                        </StackPanel>
                         <TextBlock Text="Đường dẫn ảnh:" Margin="0,10,0,2" FontStyle="Italic"/>
                         <TextBlock x:Name="txtImagePath" Text="(Chưa chọn ảnh nào)" TextWrapping="Wrap" Background="#f0f0f0" Padding="2"/>
                     </StackPanel>
                 </GroupBox>
+
+                <GroupBox Header="Chọn từ ảnh đã lưu" Padding="10" Margin="0,15,0,0">
+                    <ListView x:Name="lvSavedImages" Height="100" SelectionChanged="LvSavedImages_SelectionChanged">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="Gray" BorderThickness="1" Margin="3" CornerRadius="3">
+                                    <StackPanel Orientation="Vertical" Width="80" ToolTip="{Binding ImageName}">
+                                        <Image Source="{Binding Thumbnail}" Width="70" Height="70" Stretch="Uniform" Margin="5"/>
+                                        <TextBlock Text="{Binding ImageName}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </GroupBox>
+
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,30,0,0">
                     <Button x:Name="btnSave" Content="Lưu cài đặt" Width="120" Height="35" Margin="5" Background="#28A745" Foreground="White" Click="BtnSave_Click"/>
