@@ -438,7 +438,7 @@ namespace namm
             }
         }
 
-        private void LvSavedImages_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void LvSavedImages_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Nếu chỉ chọn 1 ảnh, hiển thị nó trong preview
             if (lvSavedImages.SelectedItems.Count == 1 && lvSavedImages.SelectedItem is SavedImage selected)
@@ -457,6 +457,13 @@ namespace namm
                 // Nếu chọn nhiều ảnh, không hiển thị preview và xóa ID đã chọn
                 _selectedSavedImageId = null;
                 txtImagePath.Text = $"Đã chọn {lvSavedImages.SelectedItems.Count} ảnh.";
+            }
+            else // Trường hợp không có ảnh nào được chọn
+            {
+                // Quay lại hiển thị ảnh đang được kích hoạt
+                _selectedSavedImageId = null;
+                // Gọi lại hàm tải cài đặt hiện tại để reset preview và text
+                await LoadCurrentSettingsAsync();
             }
         }
 
