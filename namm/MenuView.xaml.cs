@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -50,9 +50,9 @@ namespace namm
                         d.CategoryID,
                         c.Name AS CategoryName,
                         CASE 
-                            WHEN d.OriginalPrice > 0 AND EXISTS (SELECT 1 FROM Recipe r WHERE r.DrinkID = d.ID) AND d.IsActive = 1 THEN N'Nguyên bản/Pha chế'
+                            WHEN d.OriginalPrice > 0 AND EXISTS (SELECT 1 FROM Recipe r WHERE r.DrinkID = d.ID) THEN N'Nguyên bản/Pha chế'
                             WHEN d.OriginalPrice > 0 THEN N'Nguyên bản'
-                            WHEN EXISTS (SELECT 1 FROM Recipe r WHERE r.DrinkID = d.ID) AND d.IsActive = 1 THEN N'Pha chế'
+                            WHEN EXISTS (SELECT 1 FROM Recipe r WHERE r.DrinkID = d.ID) THEN N'Pha chế'
                             ELSE N'Chưa gán' 
                         END AS DrinkType
                     FROM Drink d 
@@ -99,6 +99,11 @@ namespace namm
 
                 // Bật lại sự kiện
                 txtName.LostFocus += TxtName_LostFocus;
+
+                // Cập nhật trạng thái các nút: Tắt Thêm, Bật Sửa/Xóa
+                btnAdd.IsEnabled = false;
+                btnUpdate.IsEnabled = true;
+                btnDelete.IsEnabled = true;
             }
             else
             {
@@ -265,6 +270,11 @@ namespace namm
             cbCategory.SelectedIndex = -1;
             chkIsActive.IsChecked = true;
             dgMenuItems.SelectedItem = null;
+
+            // Đặt lại trạng thái các nút: Bật Thêm, Tắt Sửa/Xóa
+            btnAdd.IsEnabled = true;
+            btnUpdate.IsEnabled = false;
+            btnDelete.IsEnabled = false;
         }
     }
 }

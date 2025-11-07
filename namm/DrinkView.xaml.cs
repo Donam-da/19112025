@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Linq;
 using System.Data;
@@ -52,7 +52,7 @@ namespace namm
         private async Task LoadDrinksToComboBoxAsync()
         {
             // Lấy cả DrinkCode để hiển thị khi chọn
-            const string query = "SELECT ID, Name, DrinkCode FROM Drink WHERE IsActive = 1 ORDER BY Name";
+            const string query = "SELECT ID, Name, DrinkCode FROM Drink ORDER BY Name";
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
@@ -70,7 +70,7 @@ namespace namm
                     SELECT 
                         d.ID, 
                         CASE WHEN d.DrinkCode IS NOT NULL THEN (d.DrinkCode + '_NB') ELSE '' END AS DrinkCode, 
-                        d.Name, d.OriginalPrice, d.ActualPrice, d.StockQuantity, d.IsActive, d.CategoryID,
+                        d.Name, d.OriginalPrice, d.ActualPrice, d.StockQuantity, d.CategoryID,
                         ISNULL(c.Name, 'N/A') AS CategoryName 
                     FROM Drink d
                     LEFT JOIN Category c ON d.CategoryID = c.ID
@@ -80,19 +80,9 @@ namespace namm
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 drinkDataTable = new DataTable(); // Initialize the DataTable
                 drinkDataTable.Columns.Add("STT", typeof(int));
-                drinkDataTable.Columns.Add("StatusText", typeof(string));
                 await Task.Run(() => adapter.Fill(drinkDataTable));
 
-                UpdateStatusText();
                 dgDrinks.ItemsSource = drinkDataTable.DefaultView;
-            }
-        }
-
-        private void UpdateStatusText()
-        {
-            if (drinkDataTable != null) foreach (DataRow row in drinkDataTable.Rows)
-            {
-                row["StatusText"] = (bool)row["IsActive"] ? "Sử dụng" : "Ngưng";
             }
         }
 
@@ -117,8 +107,8 @@ namespace namm
                 txtPrice.Text = Convert.ToDecimal(row["OriginalPrice"]).ToString("G0"); // Bỏ phần thập phân .00
                 txtActualPrice.Text = Convert.ToDecimal(row["ActualPrice"]).ToString("G0"); // Bỏ phần thập phân .00
                 txtStockQuantity.Text = Convert.ToDecimal(row["StockQuantity"]).ToString("G0");
-                chkIsActive.IsChecked = (bool)row["IsActive"];
                 cbDrink.IsEnabled = false; // Không cho đổi đồ uống khi đang sửa
+                btnDelete.IsEnabled = true; // Bật nút xóa khi chọn một mục
             }
         }
 
@@ -137,7 +127,7 @@ namespace namm
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 // Luôn là UPDATE, không có INSERT ở màn hình này
-                const string query = "UPDATE Drink SET OriginalPrice = @OriginalPrice, ActualPrice = @ActualPrice, StockQuantity = @StockQuantity, IsActive = @IsActive WHERE ID = @ID";
+                const string query = "UPDATE Drink SET OriginalPrice = @OriginalPrice, ActualPrice = @ActualPrice, StockQuantity = @StockQuantity WHERE ID = @ID";
                 SqlCommand command = new SqlCommand(query, connection);
                 AddParameters(command, drinkId); // Truyền ID vào
                 try
@@ -151,6 +141,67 @@ namespace namm
                 catch (SqlException ex)
                 {
                     MessageBox.Show($"Lỗi khi cập nhật: {ex.Message}", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void BtnDelete_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgDrinks.SelectedItem == null)
+            {
+                MessageBox.Show("Vui lòng chọn một đồ uống để xóa.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (dgDrinks.SelectedItem is DataRowView row)
+            {
+                int drinkId = (int)row["ID"];
+                string drinkName = row["Name"].ToString();
+
+                // Kiểm tra xem đồ uống có tồn tại trong bất kỳ hóa đơn nào không
+                bool isInBill = false;
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    const string checkQuery = "SELECT TOP 1 1 FROM BillInfo WHERE DrinkID = @DrinkID";
+                    SqlCommand checkCommand = new SqlCommand(checkQuery, connection);
+                    checkCommand.Parameters.AddWithValue("@DrinkID", drinkId);
+                    await connection.OpenAsync();
+                    var result = await checkCommand.ExecuteScalarAsync();
+                    if (result != null)
+                    {
+                        isInBill = true;
+                    }
+                }
+
+                if (isInBill)
+                {
+                    MessageBox.Show($"Không thể xóa đồ uống '{drinkName}' vì đã có lịch sử giao dịch. Bạn có thể ẩn đồ uống này ở trang 'Quản lí Đồ uống (Tổng)'.", "Không thể xóa", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Nếu không có trong hóa đơn, tiến hành hỏi xóa
+                if (MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn đồ uống '{drinkName}' không? Hành động này sẽ xóa cả công thức pha chế (nếu có) và không thể hoàn tác.", "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        // Xóa công thức liên quan trước, sau đó xóa đồ uống
+                        const string deleteQuery = "DELETE FROM Recipe WHERE DrinkID = @ID; DELETE FROM Drink WHERE ID = @ID;";
+                        SqlCommand command = new SqlCommand(deleteQuery, connection);
+                        command.Parameters.AddWithValue("@ID", drinkId);
+
+                        try
+                        {
+                            await connection.OpenAsync();
+                            await command.ExecuteNonQueryAsync();
+                            MessageBox.Show("Xóa đồ uống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                            await LoadDataAsync(); // Tải lại toàn bộ dữ liệu
+                            ResetFields();
+                        }
+                        catch (SqlException ex)
+                        {
+                            MessageBox.Show($"Lỗi khi xóa đồ uống: {ex.Message}", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
                 }
             }
         }
@@ -185,7 +236,6 @@ namespace namm
                     txtPrice.Text = Convert.ToDecimal(existingDrinkRow["OriginalPrice"]).ToString("G0");
                     txtActualPrice.Text = Convert.ToDecimal(existingDrinkRow["ActualPrice"]).ToString("G0");
                     txtStockQuantity.Text = Convert.ToDecimal(existingDrinkRow["StockQuantity"]).ToString("G0");
-                    chkIsActive.IsChecked = (bool)existingDrinkRow["IsActive"];
                 }
                 else
                 {
@@ -194,7 +244,6 @@ namespace namm
                     txtPrice.Clear();
                     txtActualPrice.Clear();
                     txtStockQuantity.Text = "0"; // Mặc định tồn kho là 0
-                    chkIsActive.IsChecked = true;
                 }
             }
         }
@@ -206,9 +255,9 @@ namespace namm
             txtPrice.Clear();
             txtActualPrice.Clear();
             txtStockQuantity.Clear();
-            chkIsActive.IsChecked = true;
             dgDrinks.SelectedItem = null;
             cbDrink.IsEnabled = true;
+            btnDelete.IsEnabled = false; // Tắt nút xóa khi làm mới
         }
 
         private bool ValidateInput()
@@ -236,7 +285,6 @@ namespace namm
             command.Parameters.AddWithValue("@OriginalPrice", Convert.ToDecimal(txtPrice.Text));
             command.Parameters.AddWithValue("@ActualPrice", Convert.ToDecimal(txtActualPrice.Text));
             command.Parameters.AddWithValue("@StockQuantity", Convert.ToDecimal(txtStockQuantity.Text));
-            command.Parameters.AddWithValue("@IsActive", chkIsActive.IsChecked ?? false);
         }
     }
 }

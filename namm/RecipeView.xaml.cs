@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -89,7 +89,6 @@ namespace namm
                 {
                     string drinkName = selectedDrink["Name"] as string ?? "";
                     txtDrinkCode.Text = (selectedDrink["DrinkCode"] as string ?? "") + "_PC";                    int drinkId = (int)selectedDrink["ID"];
-                    chkIsActive.IsChecked = (bool)selectedDrink["IsActive"];
                     await LoadRecipeForDrink(drinkId);
                 }
                 else
@@ -98,7 +97,6 @@ namespace namm
                     currentRecipe.Clear();
                     txtActualPrice.Clear();
                     dgCurrentRecipe.Items.Refresh();
-                    chkIsActive.IsChecked = true;
                     await UpdateCurrentRecipeCost();
                     // Không cần làm gì thêm vì không còn lưới chi tiết
                 }
@@ -135,12 +133,10 @@ namespace namm
                         -- Tính số lượng tối đa có thể làm
                         -- Nếu không có công thức, trả về 0. Nếu có, tính số ly tối thiểu có thể làm từ các nguyên liệu
                         CASE WHEN MIN(rc.RecipeQuantity) IS NULL THEN 0 ELSE MIN(FLOOR(rc.StockQuantity / rc.RecipeQuantity)) END AS MaxCanMake,
-                        d.DrinkCode,
-                        d.IsActive
-                    FROM Drink d
+                        d.DrinkCode
+                    FROM Drink d 
                     LEFT JOIN RecipeCosts rc ON d.ID = rc.DrinkID
-                    WHERE d.IsActive = 1
-                    GROUP BY d.ID, d.Name, d.ActualPrice, d.DrinkCode, d.IsActive
+                    GROUP BY d.ID, d.Name, d.ActualPrice, d.DrinkCode
                     ORDER BY d.Name;
                 ";
 
@@ -319,10 +315,9 @@ namespace namm
                         }
 
                         // 3. Cập nhật giá vốn và giá bán mới cho đồ uống
-                        var updateDrinkCmd = new SqlCommand("UPDATE Drink SET RecipeCost = @RecipeCost, ActualPrice = @ActualPrice, IsActive = @IsActive WHERE ID = @DrinkID", connection, transaction);
+                        var updateDrinkCmd = new SqlCommand("UPDATE Drink SET RecipeCost = @RecipeCost, ActualPrice = @ActualPrice WHERE ID = @DrinkID", connection, transaction);
                         updateDrinkCmd.Parameters.AddWithValue("@RecipeCost", newCostPrice);
                         updateDrinkCmd.Parameters.AddWithValue("@ActualPrice", decimal.Parse(txtActualPrice.Text));
-                        updateDrinkCmd.Parameters.AddWithValue("@IsActive", chkIsActive.IsChecked ?? false);
                         updateDrinkCmd.Parameters.AddWithValue("@DrinkID", drinkId);
                         await updateDrinkCmd.ExecuteNonQueryAsync();
 
@@ -421,26 +416,24 @@ namespace namm
             return prices;
         }
 
-        private void DgRecipeSummary_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void DgRecipeSummary_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
                 if (dgRecipeSummary.SelectedItem is DataRowView row)
                 {
-                    txtActualPrice.Text = Convert.ToDecimal(row["ActualPrice"]).ToString("G0");
-                    chkIsActive.IsChecked = (bool)row["IsActive"];
-                    // Lấy ID của đồ uống từ dòng được chọn
                     int drinkId = (int)row["DrinkID"];
+
+                    // Cập nhật các trường thông tin bên trái
+                    txtDrinkCode.Text = (row["DrinkCode"] as string ?? "") + "_PC";
+                    txtActualPrice.Text = Convert.ToDecimal(row["ActualPrice"]).ToString("G0");
+                    await LoadRecipeForDrink(drinkId); // Tải chi tiết công thức
 
                     // Chỉ thực hiện nếu lựa chọn trong ComboBox chưa đúng
                     if ((int?)cbDrink.SelectedValue != drinkId)
                     {
-                        // Tạm thời bỏ đăng ký sự kiện để tránh vòng lặp không cần thiết
-                        cbDrink.SelectionChanged -= CbDrink_SelectionChanged;
                         // Đặt ComboBox thành đồ uống tương ứng để đồng bộ giao diện
                         cbDrink.SelectedValue = drinkId;
-                        // Đăng ký lại sự kiện
-                        cbDrink.SelectionChanged += CbDrink_SelectionChanged;
                     }
                 }
             }

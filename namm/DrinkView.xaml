@@ -47,7 +47,6 @@
                     <DataGridTextColumn Header="Giá nhập vào" Binding="{Binding OriginalPrice, StringFormat={}{0:N0}}" Width="1.4*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
                     <DataGridTextColumn Header="Giá bán" Binding="{Binding ActualPrice, StringFormat={}{0:N0}}" Width="1.3*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
                     <DataGridTextColumn Header="Tồn kho" Binding="{Binding StockQuantity, StringFormat={}{0:G29}}" Width="1*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
-                    <DataGridTextColumn Header="Trạng thái" Binding="{Binding StatusText}" Width="1*" HeaderStyle="{StaticResource CenterHeader}" ElementStyle="{StaticResource CenterCell}"/>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
@@ -71,12 +70,11 @@
                 <TextBlock Text="Số lượng tồn kho:" Margin="0,10,0,2"/>
                 <TextBox x:Name="txtStockQuantity" Padding="5"/>
 
-                <CheckBox x:Name="chkIsActive" Content="Sử dụng" IsChecked="True" VerticalAlignment="Center" Margin="0,15,0,10"/>
-
                 <WrapPanel HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <Button x:Name="btnSave" Content="Lưu" Width="80" Margin="5" Click="BtnSave_Click" IsEnabled="{Binding ElementName=cbDrink, Path=SelectedItem, Converter={StaticResource NullToFalseConverter}}"/>
+                    <Button x:Name="btnSave" Content="Lưu" Width="80" Margin="5" Click="BtnSave_Click" IsEnabled="{Binding ElementName=cbDrink, Path=SelectedItem, Converter={StaticResource NullToFalseConverter}}" ToolTip="Lưu thông tin giá và tồn kho cho đồ uống đã chọn."/>
+                    <Button x:Name="btnDelete" Content="Xóa" Width="80" Margin="5" Click="BtnDelete_Click" IsEnabled="False" ToolTip="Xóa đồ uống này khỏi hệ thống (chỉ khi chưa có giao dịch)."/>
                 </WrapPanel>
-                <Button x:Name="btnReset" Content="Làm mới" Width="80" Margin="5" HorizontalAlignment="Center" Click="BtnReset_Click"/>
+                <Button x:Name="btnReset" Content="Làm mới" Width="100" Margin="5" HorizontalAlignment="Center" Click="BtnReset_Click"/>
             </StackPanel>
         </DockPanel>
     </Grid>
