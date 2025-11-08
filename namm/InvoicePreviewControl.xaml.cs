@@ -1,15 +1,25 @@
 using System;
+using System.Configuration;
 using System.Data;
+using System.Data.SqlClient;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace namm
 {
     public partial class InvoicePreviewControl : UserControl
     {
+        private readonly string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
+
         public InvoicePreviewControl()
         {
             InitializeComponent();
+            // Tải và thiết lập ảnh nền động khi control được tạo
+            _ = SetBackgroundImageAsync();
         }
 
         public void DisplayInvoice(DataRowView invoiceData, DataView detailsView)
@@ -57,6 +67,53 @@ namespace namm
         {
             this.Visibility = Visibility.Collapsed;
             dgBillItems.ItemsSource = null;
+        }
+
+        private async Task SetBackgroundImageAsync()
+        {
+            try
+            {
+                byte[]? imageData = null;
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    // Lấy ảnh đang được kích hoạt cho màn hình đăng nhập
+                    var command = new SqlCommand("SELECT ImageData FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
+                    imageData = await command.ExecuteScalarAsync() as byte[];
+                }
+
+                if (imageData != null && imageData.Length > 0)
+                {
+                    var imageSource = await Task.Run(() => LoadImageFromBytes(imageData));
+                    var imageBrush = new ImageBrush(imageSource)
+                    {
+                        Stretch = Stretch.UniformToFill,
+                        Opacity = 0.15 // Giữ độ mờ để làm ảnh chìm
+                    };
+                    imageBrush.Freeze(); // Tối ưu hóa hiệu suất
+                    PreviewGrid.Background = imageBrush;
+                }
+            }
+            catch (Exception)
+            {
+                // Bỏ qua lỗi, không hiển thị ảnh nền nếu có sự cố
+            }
+        }
+
+        private BitmapImage LoadImageFromBytes(byte[] imageData)
+        {
+            var image = new BitmapImage();
+            using (var mem = new MemoryStream(imageData))
+            {
+                mem.Position = 0;
+                image.BeginInit();
+                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = mem;
+                image.EndInit();
+            }
+            image.Freeze();
+            return image;
         }
     }
 }

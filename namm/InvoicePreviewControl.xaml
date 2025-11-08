@@ -8,7 +8,7 @@
              d:DesignHeight="600" d:DesignWidth="400"
              FontFamily="Segoe UI" Background="White">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="15">
+        <Grid x:Name="PreviewGrid" Margin="15">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
