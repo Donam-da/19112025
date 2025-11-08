@@ -308,5 +308,8 @@
   <ItemGroup>
     <Resource Include="Resources\login_icon.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\background_invoice.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

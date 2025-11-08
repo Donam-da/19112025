@@ -9,7 +9,7 @@
         WindowStartupLocation="CenterOwner"
         WindowStyle="ToolWindow"
         FontFamily="Segoe UI">
-    <Grid Margin="15">
+    <Grid x:Name="InvoiceGrid" Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
