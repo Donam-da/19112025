@@ -16,7 +16,7 @@
                 </MenuItem.Header>
             </MenuItem>
             <MenuItem Header="_Hệ thống" Click="TopLevelMenuItem_Click">
-                <MenuItem x:Name="miManageEmployees" Header="Quản lí nhân viên" Click="ManageEmployees_Click"/>
+                <MenuItem x:Name="miManageEmployees" Header="Quản lí nhân viên" Click="ManageEmployees_Click" ToolTip="Quản lý tài khoản nhân viên (chỉ dành cho Admin)."/>
                 <MenuItem Header="Đổi mật khẩu" Click="ChangePassword_Click"/>
                 <MenuItem Header="Thiết lập giao diện" Click="InterfaceSettings_Click"/>
                 <Separator/> 

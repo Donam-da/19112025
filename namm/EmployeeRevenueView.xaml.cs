@@ -15,10 +15,12 @@ namespace namm
     {
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
         private DataTable revenueDataTable = new DataTable();
+        private AccountDTO? loggedInAccount; // Thêm biến để lưu tài khoản đăng nhập
 
-        public EmployeeRevenueView()
+        public EmployeeRevenueView(AccountDTO? account = null)
         {
             InitializeComponent();
+            this.loggedInAccount = account;
         }
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -40,25 +42,40 @@ namespace namm
             dpEndDate.SelectedDateChanged += Filters_Changed;
             cbEmployees.SelectionChanged += Filters_Changed;
 
+            ApplyAuthorization(); // Áp dụng phân quyền
             await FilterData();
         }
 
         private async Task LoadEmployeeFilterAsync()
         {
+            var employeeTable = new DataTable();
             using (var connection = new SqlConnection(connectionString))
             {
-                // Lấy danh sách nhân viên (Type = 0) và admin (Type = 1), thêm mục "Tất cả"
-                const string query = @"
-                    SELECT 'ALL_USERS' AS UserName, N'Tất cả' AS DisplayName, -1 AS SortOrder
-                    UNION ALL
-                    SELECT UserName, DisplayName, 0 AS SortOrder FROM Account WHERE Type IN (0, 1)
-                    ORDER BY SortOrder, DisplayName";
+                string query;
+                // Nếu là Admin, tải tất cả nhân viên và thêm mục "Tất cả"
+                if (loggedInAccount?.Type == 1)
+                {
+                    query = @"
+                        SELECT 'ALL_USERS' AS UserName, N'Tất cả' AS DisplayName, -1 AS SortOrder
+                        UNION ALL
+                        SELECT UserName, DisplayName, 0 AS SortOrder FROM Account WHERE Type IN (0, 1)
+                        ORDER BY SortOrder, DisplayName";
+                }
+                else // Nếu là nhân viên, chỉ tải chính mình
+                {
+                    query = "SELECT UserName, DisplayName FROM Account WHERE UserName = @UserName";
+                }
+
                 var adapter = new SqlDataAdapter(query, connection);
-                var employeeTable = new DataTable();
+                if (loggedInAccount?.Type == 0)
+                {
+                    adapter.SelectCommand.Parameters.AddWithValue("@UserName", loggedInAccount.UserName);
+                }
+
                 await Task.Run(() => adapter.Fill(employeeTable));
-                cbEmployees.ItemsSource = employeeTable.DefaultView;
-                cbEmployees.SelectedIndex = 0;
             }
+            cbEmployees.ItemsSource = employeeTable.DefaultView;
+            cbEmployees.SelectedIndex = 0;
         }
 
         private async void BtnFilter_Click(object sender, RoutedEventArgs e)
@@ -76,9 +93,19 @@ namespace namm
         {
             DateTime? startDate = dpStartDate.SelectedDate?.Date;
             DateTime? endDate = dpEndDate.SelectedDate?.Date.AddDays(1).AddTicks(-1); // Lấy đến cuối ngày
-            string? employeeUserName = (cbEmployees.SelectedValue != null && cbEmployees.SelectedValue.ToString() != "ALL_USERS")
-                                       ? cbEmployees.SelectedValue.ToString()
-                                       : null;
+            string? employeeUserName = null;
+
+            // Nếu là nhân viên, chỉ lấy username của họ
+            if (loggedInAccount?.Type == 0)
+            {
+                employeeUserName = loggedInAccount.UserName;
+            }
+            else // Nếu là Admin, lấy từ ComboBox
+            {
+                employeeUserName = (cbEmployees.SelectedValue != null && cbEmployees.SelectedValue.ToString() != "ALL_USERS")
+                                   ? cbEmployees.SelectedValue.ToString()
+                                   : null;
+            }
 
             await LoadRevenueDataAsync(startDate, endDate, employeeUserName);
         }
@@ -165,6 +192,16 @@ namespace namm
 
             tbTotalInvoices.Text = $"{totalInvoices:N0}";
             tbTotalRevenue.Text = $"{totalRevenue:N0} VNĐ";
+        }
+
+        private void ApplyAuthorization()
+        {
+            // Nếu người dùng là nhân viên (Type = 0)
+            if (loggedInAccount?.Type == 0)
+            {
+                // Vô hiệu hóa ComboBox để không cho phép chọn nhân viên khác
+                cbEmployees.IsEnabled = false;
+            }
         }
     }
 }

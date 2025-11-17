@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
@@ -18,11 +18,13 @@ namespace namm
         private DataTable? menuDataTable;
         private DataTable? tableDataTable;
         // Lưu trữ hóa đơn cho mỗi bàn, với Key là TableID
-        private Dictionary<int, ObservableCollection<BillItem>> billsByTable = new Dictionary<int, ObservableCollection<BillItem>>();
+        private readonly Dictionary<int, ObservableCollection<BillItem>> billsByTable = new Dictionary<int, ObservableCollection<BillItem>>();
+        private readonly AccountDTO? loggedInAccount;
 
-        public DashboardView()
+        public DashboardView(AccountDTO? account = null)
         {
             InitializeComponent();
+            this.loggedInAccount = account;
         }
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)

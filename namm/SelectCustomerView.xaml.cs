@@ -504,7 +504,7 @@ namespace namm
             if (mainAppWindow != null)
             {
                 mainAppWindow.MainContent.Children.Clear();
-                mainAppWindow.MainContent.Children.Add(new DashboardView());
+                mainAppWindow.MainContent.Children.Add(new DashboardView(mainAppWindow.LoggedInAccount));
             }
         }
 

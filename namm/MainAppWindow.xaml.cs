@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -27,10 +27,10 @@ namespace namm
             InitializeComponent();
             this.LoggedInAccount = account;
             LoadApplicationTheme();
-            Authorize();
 
             // Hiển thị sơ đồ bàn làm màn hình chính
-            MainContent.Children.Add(new DashboardView());
+            MainContent.Children.Add(new DashboardView(LoggedInAccount));
+            Authorize(); // Gọi phân quyền sau khi các thành phần đã được khởi tạo
         }
 
         private void LoadApplicationTheme()
@@ -56,9 +56,9 @@ namespace namm
             if (LoggedInAccount.Type == 0)
             {
                 miManageEmployees.Visibility = Visibility.Collapsed;
+                miInvoiceHistory.Visibility = Visibility.Collapsed; // Ẩn Lịch sử hóa đơn
                 miDeleteHistory.Visibility = Visibility.Collapsed;
-                miProfitStatistics.Visibility = Visibility.Collapsed; // Chỉ ẩn mục Thống kê lợi nhuận
-                miEmployeeRevenue.Visibility = Visibility.Collapsed;
+                miProfitStatistics.Visibility = Visibility.Collapsed; // Ẩn Thống kê lợi nhuận
             }
         }
 
@@ -151,7 +151,7 @@ namespace namm
         {
             // Hiển thị sơ đồ bàn làm màn hình chính
             MainContent.Children.Clear();
-            MainContent.Children.Add(new DashboardView());
+            MainContent.Children.Add(new DashboardView(LoggedInAccount));
         }
 
         private void ManageCategories_Click(object sender, RoutedEventArgs e)
@@ -200,7 +200,7 @@ namespace namm
         {
             // Hiển thị giao diện thống kê doanh thu nhân viên
             MainContent.Children.Clear();
-            MainContent.Children.Add(new EmployeeRevenueView());
+            MainContent.Children.Add(new EmployeeRevenueView(this.LoggedInAccount));
         }
 
         private void InterfaceSettings_Click(object sender, RoutedEventArgs e)
