@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -25,7 +25,7 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string query = "SELECT UserName, DisplayName, Type, PhoneNumber, Address FROM Account";
+                string query = "SELECT UserName, DisplayName, Password, Type, PhoneNumber, Address FROM Account";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 DataTable dataTable = new DataTable();
                 dataTable.Columns.Add("STT", typeof(int)); // Thêm cột STT vào DataTable
@@ -39,14 +39,13 @@ namespace namm
         {
             if (dgAccounts.SelectedItem is DataRowView row)
             {
-                txtUserName.Text = row["UserName"].ToString();
-                txtDisplayName.Text = row["DisplayName"].ToString();
-                txtPhoneNumber.Text = row["PhoneNumber"].ToString();
-                txtAddress.Text = row["Address"].ToString();
+                txtUserName.Text = row["UserName"]?.ToString();
+                txtDisplayName.Text = row["DisplayName"]?.ToString();
+                txtPhoneNumber.Text = row["PhoneNumber"]?.ToString();
+                txtAddress.Text = row["Address"]?.ToString();
                 cbAccountType.SelectedIndex = Convert.ToInt32(row["Type"]);
-
-                // Không hiển thị mật khẩu khi chọn
-                txtPassword.Text = "";
+                // Hiển thị mật khẩu khi chọn
+                txtPassword.Text = row["Password"]?.ToString();
                 txtUserName.IsEnabled = false; // Không cho sửa tên đăng nhập (khóa chính)
             }
         }
@@ -119,17 +118,19 @@ namespace namm
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 // Nếu người dùng không nhập mật khẩu mới, giữ nguyên mật khẩu cũ
-                string query = string.IsNullOrWhiteSpace(password)
-                    ? "UPDATE Account SET DisplayName=@DisplayName, Type=@Type, PhoneNumber=@PhoneNumber, Address=@Address WHERE UserName=@UserName"
-                    : "UPDATE Account SET DisplayName=@DisplayName, Password=@Password, Type=@Type, PhoneNumber=@PhoneNumber, Address=@Address WHERE UserName=@UserName";
+                // Luôn cập nhật mật khẩu từ textbox để đảm bảo đồng bộ
+                string query = "UPDATE Account SET DisplayName=@DisplayName, Password=@Password, Type=@Type, PhoneNumber=@PhoneNumber, Address=@Address WHERE UserName=@UserName";
 
                 SqlCommand command = new SqlCommand(query, connection);
                 command.Parameters.AddWithValue("@UserName", userName);
                 command.Parameters.AddWithValue("@DisplayName", displayName);
-                if (!string.IsNullOrWhiteSpace(password))
+                // Nếu mật khẩu trống, báo lỗi thay vì không cập nhật
+                if (string.IsNullOrWhiteSpace(password))
                 {
-                    command.Parameters.AddWithValue("@Password", password);
+                    MessageBox.Show("Mật khẩu không được để trống khi cập nhật.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
+                command.Parameters.AddWithValue("@Password", password);
                 command.Parameters.AddWithValue("@Type", type);
                 command.Parameters.AddWithValue("@PhoneNumber", string.IsNullOrWhiteSpace(phone) ? (object)DBNull.Value : phone);
                 command.Parameters.AddWithValue("@Address", string.IsNullOrWhiteSpace(address) ? (object)DBNull.Value : address);
