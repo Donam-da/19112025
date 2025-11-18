@@ -15,7 +15,7 @@ namespace namm
     {
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
         private DataTable revenueDataTable = new DataTable();
-        private AccountDTO? loggedInAccount; // Thêm biến để lưu tài khoản đăng nhập
+        private AccountDTO? loggedInAccount; 
 
         public EmployeeRevenueView(AccountDTO? account = null)
         {
@@ -25,24 +25,21 @@ namespace namm
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Tạm gỡ event handler để tránh gọi nhiều lần
             dpStartDate.SelectedDateChanged -= Filters_Changed;
             dpEndDate.SelectedDateChanged -= Filters_Changed;
             cbEmployees.SelectionChanged -= Filters_Changed;
 
             await LoadEmployeeFilterAsync();
 
-            // Mặc định là tháng này
             var today = DateTime.Today;
             dpStartDate.SelectedDate = new DateTime(today.Year, today.Month, 1);
             dpEndDate.SelectedDate = today;
 
-            // Gắn lại event handler
             dpStartDate.SelectedDateChanged += Filters_Changed;
             dpEndDate.SelectedDateChanged += Filters_Changed;
             cbEmployees.SelectionChanged += Filters_Changed;
 
-            ApplyAuthorization(); // Áp dụng phân quyền
+            ApplyAuthorization(); 
             await FilterData();
         }
 
@@ -52,7 +49,6 @@ namespace namm
             using (var connection = new SqlConnection(connectionString))
             {
                 string query;
-                // Nếu là Admin, tải tất cả nhân viên và thêm mục "Tất cả"
                 if (loggedInAccount?.Type == 1)
                 {
                     query = @"
@@ -61,7 +57,7 @@ namespace namm
                         SELECT UserName, DisplayName, 0 AS SortOrder FROM Account WHERE Type IN (0, 1)
                         ORDER BY SortOrder, DisplayName";
                 }
-                else // Nếu là nhân viên, chỉ tải chính mình
+                else 
                 {
                     query = "SELECT UserName, DisplayName FROM Account WHERE UserName = @UserName";
                 }
@@ -92,15 +88,14 @@ namespace namm
         private async Task FilterData()
         {
             DateTime? startDate = dpStartDate.SelectedDate?.Date;
-            DateTime? endDate = dpEndDate.SelectedDate?.Date.AddDays(1).AddTicks(-1); // Lấy đến cuối ngày
+            DateTime? endDate = dpEndDate.SelectedDate?.Date.AddDays(1).AddTicks(-1); 
             string? employeeUserName = null;
 
-            // Nếu là nhân viên, chỉ lấy username của họ
             if (loggedInAccount?.Type == 0)
             {
                 employeeUserName = loggedInAccount.UserName;
             }
-            else // Nếu là Admin, lấy từ ComboBox
+            else 
             {
                 employeeUserName = (cbEmployees.SelectedValue != null && cbEmployees.SelectedValue.ToString() != "ALL_USERS")
                                    ? cbEmployees.SelectedValue.ToString()
@@ -196,10 +191,8 @@ namespace namm
 
         private void ApplyAuthorization()
         {
-            // Nếu người dùng là nhân viên (Type = 0)
             if (loggedInAccount?.Type == 0)
             {
-                // Vô hiệu hóa ComboBox để không cho phép chọn nhân viên khác
                 cbEmployees.IsEnabled = false;
             }
         }

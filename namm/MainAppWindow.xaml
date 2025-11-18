@@ -15,7 +15,7 @@
                           Stroke="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}" StrokeThickness="1.5" Width="16" Height="16" Stretch="Uniform"/>
                 </MenuItem.Header>
             </MenuItem>
-            <MenuItem Header="_Hệ thống" Click="TopLevelMenuItem_Click">
+            <MenuItem Header="Hệ thống" Click="TopLevelMenuItem_Click">
                 <MenuItem x:Name="miManageEmployees" Header="Quản lí nhân viên" Click="ManageEmployees_Click" ToolTip="Quản lý tài khoản nhân viên (chỉ dành cho Admin)."/>
                 <MenuItem Header="Đổi mật khẩu" Click="ChangePassword_Click"/>
                 <MenuItem Header="Thiết lập giao diện" Click="InterfaceSettings_Click"/>
@@ -24,7 +24,7 @@
                 <MenuItem Header="Đăng xuất" Click="Logout_Click"/>
                 <Separator/>
             </MenuItem>
-            <MenuItem Header="_Quản lí" Click="TopLevelMenuItem_Click">
+            <MenuItem Header="Quản lí" Click="TopLevelMenuItem_Click">
                 <MenuItem Header="Quản lí bàn" Click="ManageTables_Click"/>
                 <MenuItem Header="Quản lí Đồ uống (Tổng)" Click="ManageMenu_Click" ToolTip="Quản lý danh sách đồ uống chính của quán."/>
                 <MenuItem Header="Quản lí đồ uống pha chế" Click="ManageRecipes_Click" ToolTip="Thiết lập công thức cho đồ uống pha chế."/>
@@ -33,7 +33,7 @@
                 <MenuItem Header="Quản lí nguyên liệu" Click="ManageMaterials_Click"/>
                 <MenuItem Header="Quản lí đơn vị tính" Click="ManageUnits_Click"/>
             </MenuItem>
-            <MenuItem x:Name="miStatistics" Header="_Thống kê" Click="TopLevelMenuItem_Click">
+            <MenuItem x:Name="miStatistics" Header="Thống kê" Click="TopLevelMenuItem_Click">
                 <MenuItem x:Name="miEmployeeRevenue" Header="Doanh thu nhân viên" Click="EmployeeRevenue_Click"/>
                 <MenuItem x:Name="miProfitStatistics" Header="Thống kê lợi nhuận" Click="miProfitStatistics_Click"/>
                 <MenuItem Header="Top hàng bán chạy" Click="TopSelling_Click"/>

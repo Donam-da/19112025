@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Data;
@@ -21,11 +21,9 @@ namespace namm
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Mặc định lọc theo ngày hôm nay
             dpStartDate.SelectedDate = DateTime.Today;
             dpEndDate.SelectedDate = DateTime.Today;
 
-            // Thêm các mục cho ComboBox lọc kiểu
             cbFilterDrinkType.Items.Add("Tất cả");
             cbFilterDrinkType.Items.Add("Pha chế");
             cbFilterDrinkType.Items.Add("Nguyên bản");
@@ -43,7 +41,7 @@ namespace namm
             }
 
             DateTime startDate = dpStartDate.SelectedDate.Value.Date;
-            DateTime endDate = dpEndDate.SelectedDate.Value.Date.AddDays(1).AddTicks(-1); // Lấy đến cuối ngày
+            DateTime endDate = dpEndDate.SelectedDate.Value.Date.AddDays(1).AddTicks(-1); 
 
             await LoadTopSellingItemsAsync(startDate, endDate);
         }
@@ -82,7 +80,7 @@ namespace namm
                 }
 
                 dgTopSelling.ItemsSource = topItemsTable.DefaultView;
-                ApplyColumnFilters(); // Áp dụng bộ lọc cột sau khi tải dữ liệu
+                ApplyColumnFilters(); 
             }
         }
 
@@ -122,7 +120,7 @@ namespace namm
             {
                 filters.Add($"DrinkCode LIKE '%{txtFilterDrinkCode.Text.Replace("'", "''")}%'");
             }
-            if (cbFilterDrinkType.SelectedIndex > 0) // Bỏ qua nếu chọn "Tất cả"
+            if (cbFilterDrinkType.SelectedIndex > 0) 
             {
                 filters.Add($"DrinkType = '{cbFilterDrinkType.SelectedItem}'");
             }

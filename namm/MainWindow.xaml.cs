@@ -1,9 +1,9 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Data.SqlClient;
-using System.IO; // Added for File.Exists
+using System.IO; 
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,34 +30,32 @@ namespace namm
         {
             InitializeComponent();
             LoadRememberedUser();
-            this.Loaded += MainWindow_Loaded; // Attach Loaded event
+            this.Loaded += MainWindow_Loaded; 
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await LoadCustomInterface(); // Await the async method
-            txtUsername.Focus(); // Focus vào ô username khi cửa sổ được tải
+            await LoadCustomInterface(); 
+            txtUsername.Focus(); 
         }
 
         private async Task LoadCustomInterface()
         {
             try
             {
-                // Tải màu sắc
                 string bgColor = Properties.Settings.Default.LoginIconBgColor;
                 iconBorder.Background = (SolidColorBrush)new BrushConverter().ConvertFromString(bgColor);
 
-                // Tải ảnh từ cơ sở dữ liệu
                 using (var connection = new SqlConnection(connectionString))
                 {
-                    await connection.OpenAsync(); // Use async version
+                    await connection.OpenAsync(); 
                     var command = new SqlCommand("SELECT ImageData FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
-                    command.CommandTimeout = 120; // Tăng thời gian chờ lên 120 giây
-                    var imageData = await command.ExecuteScalarAsync() as byte[]; // Use async version
+                    command.CommandTimeout = 120; 
+                    var imageData = await command.ExecuteScalarAsync() as byte[]; 
 
                     if (imageData != null && imageData.Length > 0)
                     {
-                        imgLoginIcon.Source = await Task.Run(() => LoadImageFromBytes(imageData)); // Offload image conversion
+                        imgLoginIcon.Source = await Task.Run(() => LoadImageFromBytes(imageData)); 
                     }
                     else
                     {
@@ -67,7 +65,6 @@ namespace namm
             }
             catch (Exception ex)
             {
-                // Nếu có lỗi (ví dụ: file ảnh bị xóa), sử dụng ảnh mặc định
                 imgLoginIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/login_icon.png"));
                 Debug.WriteLine($"Lỗi khi tải giao diện tùy chỉnh: {ex.Message}");
             }
@@ -116,11 +113,10 @@ namespace namm
             AccountDTO? loginAccount = CheckLogin(username, password);
             if (loginAccount != null)
             {
-                // Lưu hoặc xóa cài đặt tùy thuộc vào checkbox
                 if (chkRememberMe.IsChecked == true)
                 {
                     Settings.Default.Username = username;
-                    Settings.Default.Password = password; // Cảnh báo: Lưu mật khẩu dạng plain text không an toàn
+                    Settings.Default.Password = password; 
                     Settings.Default.RememberMe = true;
                 }
                 else
@@ -133,7 +129,7 @@ namespace namm
 
                 MainAppWindow mainApp = new MainAppWindow(loginAccount);
                 mainApp.Show();
-                this.Close(); // Đóng cửa sổ đăng nhập
+                this.Close(); 
             }
             else
             {
@@ -149,7 +145,7 @@ namespace namm
                 string query = "SELECT * FROM Account WHERE UserName=@UserName AND Password=@Password";
                 SqlCommand command = new SqlCommand(query, connection);
                 command.Parameters.AddWithValue("@UserName", username);
-                command.Parameters.AddWithValue("@Password", password); // Nhắc lại: nên hash mật khẩu
+                command.Parameters.AddWithValue("@Password", password); 
 
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();

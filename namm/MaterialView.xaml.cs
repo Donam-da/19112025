@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -39,7 +39,6 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                // Dùng JOIN để lấy tên đơn vị tính từ bảng Unit
                 string query = @"
                     SELECT 
                         m.ID, m.Name, m.Quantity, m.Price, m.Description, m.IsActive, m.UnitID,
@@ -80,12 +79,21 @@ namespace namm
             {
                 txtName.Text = row["Name"].ToString();
                 txtQuantity.Text = row["Quantity"].ToString();
-                txtPrice.Text = Convert.ToDecimal(row["Price"]).ToString("G0"); // Bỏ phần thập phân .00
+                txtPrice.Text = Convert.ToDecimal(row["Price"]).ToString("G0"); 
                 txtDescription.Text = row["Description"].ToString();
                 chkIsActive.IsChecked = (bool)row["IsActive"];
 
-                // Tìm và chọn Unit trong ComboBox
                 cbUnit.SelectedValue = row["UnitID"];
+
+                btnAdd.IsEnabled = false;
+                btnEdit.IsEnabled = true;
+                btnDelete.IsEnabled = true;
+            }
+            else
+            {
+                // Nếu không có dòng nào được chọn (ví dụ sau khi làm mới),
+                // đặt lại các trường và trạng thái nút.
+                ResetFields();
             }
         }
 
@@ -109,7 +117,6 @@ namespace namm
                 }
                 catch (SqlException ex)
                 {
-                    // Bắt lỗi nếu tên nguyên liệu đã tồn tại (lỗi khóa UNIQUE)
                     MessageBox.Show($"Lỗi khi thêm nguyên liệu: {ex.Message}\n\nCó thể tên nguyên liệu này đã tồn tại.", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -188,6 +195,10 @@ namespace namm
             cbUnit.SelectedIndex = -1;
             chkIsActive.IsChecked = true;
             dgMaterials.SelectedItem = null;
+
+            btnAdd.IsEnabled = true;
+            btnEdit.IsEnabled = false;
+            btnDelete.IsEnabled = false;
         }
 
         private bool ValidateInput()

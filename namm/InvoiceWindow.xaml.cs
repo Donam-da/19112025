@@ -19,11 +19,9 @@ namespace namm
         {
             InitializeComponent();
 
-            // Tải và thiết lập ảnh nền động
             _ = SetBackgroundImageAsync();
 
-            // Điền thông tin vào hóa đơn
-            tbInvoiceId.Text = billId.ToString("D6"); // Định dạng số hóa đơn, ví dụ: 000123
+            tbInvoiceId.Text = billId.ToString("D6"); 
             tbTableName.Text = tableName;
             tbCustomerCode.Text = customerCode;
             tbCustomerName.Text = customerName;
@@ -39,7 +37,6 @@ namespace namm
                 gridDiscount.Visibility = Visibility.Visible;
             }
 
-            // Hiển thị danh sách món
             dgBillItems.ItemsSource = billItems;
         }
 
@@ -51,7 +48,6 @@ namespace namm
                 using (var connection = new SqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
-                    // Lấy ảnh đang được kích hoạt cho màn hình đăng nhập
                     var command = new SqlCommand("SELECT ImageData FROM InterfaceImages WHERE IsActiveForLogin = 1", connection);
                     imageData = await command.ExecuteScalarAsync() as byte[];
                 }
@@ -61,17 +57,14 @@ namespace namm
                     var imageSource = await Task.Run(() => LoadImageFromBytes(imageData));
                     var imageBrush = new ImageBrush(imageSource)
                     {
-                        Stretch = Stretch.UniformToFill,
-                        Opacity = 0.15 // Giữ độ mờ để làm ảnh chìm
+                        Stretch = Stretch.UniformToFill, Opacity = 0.15 
                     };
-                    imageBrush.Freeze(); // Tối ưu hóa hiệu suất
+                    imageBrush.Freeze(); 
                     InvoiceGrid.Background = imageBrush;
                 }
-                // Nếu không tìm thấy ảnh, Grid sẽ có nền trong suốt mặc định
             }
             catch (Exception)
             {
-                // Bỏ qua lỗi, không hiển thị ảnh nền nếu có sự cố
             }
         }
 
@@ -93,22 +86,13 @@ namespace namm
 
         private void BtnConfirm_Click(object sender, RoutedEventArgs e)
         {
-            // Đóng cửa sổ và trả về kết quả là true để xác nhận thanh toán
             this.DialogResult = true;
         }
 
         private void BtnPrint_Click(object sender, RoutedEventArgs e)
         {
-            // Chức năng in hóa đơn
-            // Đây là một chức năng phức tạp, tạm thời chỉ hiển thị thông báo
             MessageBox.Show("Chức năng in hóa đơn đang được phát triển!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            // Nếu bạn muốn triển khai in thật, bạn có thể sử dụng PrintDialog
-            // PrintDialog printDialog = new PrintDialog();
-            // if (printDialog.ShowDialog() == true)
-            // {
-            //     printDialog.PrintVisual(this, "In hóa đơn");
-            // }
         }
     }
 }

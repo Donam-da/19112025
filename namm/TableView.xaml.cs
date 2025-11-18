@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -25,7 +25,16 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string query = "SELECT ID, Name, Capacity, Status FROM TableFood";
+                string query = @"
+                    SELECT 
+                        tf.ID, 
+                        tf.Name, 
+                        tf.Capacity, 
+                        CASE 
+                            WHEN EXISTS (SELECT 1 FROM Bill b WHERE b.TableID = tf.ID AND b.Status = 0) THEN N'Có người' 
+                            ELSE N'Trống' 
+                        END AS Status
+                    FROM TableFood tf";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 DataTable dataTable = new DataTable();
                 dataTable.Columns.Add("STT", typeof(int));
@@ -46,15 +55,13 @@ namespace namm
         {
             if (dgTables.SelectedItem is DataRowView row)
             {
-                // Chỉ hiển thị số của bàn trong ô nhập liệu
                 string fullName = row["Name"].ToString() ?? "";
                 string tableNumber = fullName.Replace("Bàn ", "").Trim();
                 txtName.Text = tableNumber;
 
                 txtCapacity.Text = row["Capacity"].ToString();
-                cbStatus.Text = row["Status"].ToString();
+                txtStatus.Text = row["Status"].ToString();
 
-                // Khi chọn một bàn, bật chế độ Sửa/Xóa và tắt chế độ Thêm
                 btnAdd.IsEnabled = false;
                 btnEdit.IsEnabled = true;
                 btnDelete.IsEnabled = true;
@@ -77,10 +84,9 @@ namespace namm
             {
                 string query = "INSERT INTO TableFood (Name, Capacity, Status) VALUES (@Name, @Capacity, @Status)";
                 SqlCommand command = new SqlCommand(query, connection);
-                // Tự động thêm "Bàn " vào trước số người dùng nhập
                 command.Parameters.AddWithValue("@Name", "Bàn " + txtName.Text);
                 command.Parameters.AddWithValue("@Capacity", Convert.ToInt32(txtCapacity.Text));
-                command.Parameters.AddWithValue("@Status", ((ComboBoxItem)cbStatus.SelectedItem).Content.ToString());
+                command.Parameters.AddWithValue("@Status", "Trống"); 
 
                 try
                 {
@@ -92,7 +98,6 @@ namespace namm
                 }
                 catch (SqlException ex)
                 {
-                    // Bắt lỗi nếu tên bàn đã tồn tại (lỗi khóa UNIQUE)
                     MessageBox.Show($"Lỗi khi thêm bàn: {ex.Message}\n\nCó thể tên bàn này đã tồn tại.", "Lỗi SQL", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -117,13 +122,11 @@ namespace namm
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string query = "UPDATE TableFood SET Name = @Name, Capacity = @Capacity, Status = @Status WHERE ID = @ID";
+                string query = "UPDATE TableFood SET Name = @Name, Capacity = @Capacity WHERE ID = @ID";
                 SqlCommand command = new SqlCommand(query, connection);
                 command.Parameters.AddWithValue("@ID", tableId);
-                // Tự động thêm "Bàn " vào trước số người dùng nhập
                 command.Parameters.AddWithValue("@Name", "Bàn " + txtName.Text);
                 command.Parameters.AddWithValue("@Capacity", Convert.ToInt32(txtCapacity.Text));
-                command.Parameters.AddWithValue("@Status", ((ComboBoxItem)cbStatus.SelectedItem).Content.ToString());
 
                 connection.Open();
                 command.ExecuteNonQuery();
@@ -169,10 +172,9 @@ namespace namm
         {
             txtName.Clear();
             txtCapacity.Clear();
-            cbStatus.SelectedIndex = 0;
+            txtStatus.Clear();
             dgTables.SelectedItem = null;
 
-            // Khi làm mới, bật chế độ Thêm và tắt chế độ Sửa/Xóa
             btnAdd.IsEnabled = true;
             btnEdit.IsEnabled = false;
             btnDelete.IsEnabled = false;

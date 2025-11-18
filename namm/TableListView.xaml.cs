@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -44,10 +44,9 @@ namespace namm
                         Margin = new Thickness(10),
                         FontSize = 14,
                         FontWeight = FontWeights.Bold,
-                        Tag = tableName // Lưu tên bàn để xử lý sau này
+                        Tag = tableName 
                     };
 
-                    // Đặt màu nền dựa trên trạng thái
                     tableButton.Background = status == "Trống" ? Brushes.LightGreen : Brushes.LightCoral;
 
                     wpTables.Children.Add(tableButton);

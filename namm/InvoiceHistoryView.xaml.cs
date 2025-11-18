@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -20,10 +20,8 @@ namespace namm
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Lấy ngày có hóa đơn đầu tiên từ DB
             DateTime? firstInvoiceDate = await GetFirstInvoiceDateAsync();
 
-            // Nếu không có hóa đơn nào, mặc định là ngày hôm nay. Ngược lại, lấy ngày đầu tiên.
             dpStartDate.SelectedDate = firstInvoiceDate?.Date ?? DateTime.Today;
             dpEndDate.SelectedDate = DateTime.Today;
 
@@ -39,7 +37,7 @@ namespace namm
             }
 
             DateTime startDate = dpStartDate.SelectedDate.Value.Date;
-            DateTime endDate = dpEndDate.SelectedDate.Value.Date.AddDays(1).AddTicks(-1); // Lấy đến cuối ngày
+            DateTime endDate = dpEndDate.SelectedDate.Value.Date.AddDays(1).AddTicks(-1); 
 
             await LoadInvoicesAsync(startDate, endDate);
         }
@@ -72,7 +70,6 @@ namespace namm
 
                 await Task.Run(() => adapter.Fill(invoiceDataTable));
 
-                // Chỉnh sửa tên bàn, STT sẽ được xử lý trong sự kiện LoadingRow
                 for (int i = 0; i < invoiceDataTable.Rows.Count; i++)
                 {
                     string tableName = invoiceDataTable.Rows[i]["TableName"].ToString();
@@ -89,7 +86,6 @@ namespace namm
         {
             using (var connection = new SqlConnection(connectionString))
             {
-                // Lấy ngày thanh toán sớm nhất từ các hóa đơn đã hoàn thành
                 const string query = "SELECT MIN(DateCheckOut) FROM Bill WHERE Status = 1";
                 var command = new SqlCommand(query, connection);
                 await connection.OpenAsync();
@@ -99,17 +95,15 @@ namespace namm
                     return (DateTime)result;
                 }
             }
-            return null; // Trả về null nếu không có hóa đơn nào
+            return null; 
         }
 
         private void DpStartDate_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
         {
             if (dpStartDate.SelectedDate.HasValue)
             {
-                // Đặt ngày bắt đầu có thể chọn cho DatePicker 'Đến ngày'
                 dpEndDate.DisplayDateStart = dpStartDate.SelectedDate;
 
-                // Nếu ngày kết thúc hiện tại nhỏ hơn ngày bắt đầu mới, cập nhật nó
                 if (dpEndDate.SelectedDate < dpStartDate.SelectedDate)
                 {
                     dpEndDate.SelectedDate = dpStartDate.SelectedDate;
@@ -124,7 +118,6 @@ namespace namm
                 int billId = (int)selectedInvoice["ID"];
                 var detailsView = await LoadInvoiceDetailsAsync(billId);
 
-                // Hiển thị hóa đơn xem trước
                 invoicePreview.DisplayInvoice(selectedInvoice, detailsView);
             }
             else
@@ -180,8 +173,6 @@ namespace namm
 
         private void DgInvoices_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            // Gán lại số thứ tự dựa trên vị trí hiển thị của hàng trong DataGrid.
-            // Điều này đảm bảo STT luôn đúng thứ tự 1, 2, 3,... ngay cả khi sắp xếp.
             if (e.Row.Item is DataRowView rowView)
             {
                 rowView.Row["STT"] = e.Row.GetIndex() + 1;

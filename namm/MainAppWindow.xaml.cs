@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -28,9 +28,8 @@ namespace namm
             this.LoggedInAccount = account;
             LoadApplicationTheme();
 
-            // Hiển thị sơ đồ bàn làm màn hình chính
             MainContent.Children.Add(new DashboardView(LoggedInAccount));
-            Authorize(); // Gọi phân quyền sau khi các thành phần đã được khởi tạo
+            Authorize(); 
         }
 
         private void LoadApplicationTheme()
@@ -41,24 +40,22 @@ namespace namm
                 if (!string.IsNullOrEmpty(bgColor))
                 {
                     var converter = new BrushConverter();
-                    this.Background = (Brush?)converter.ConvertFromString(bgColor); // Áp dụng màu nền cho Window
+                    this.Background = (Brush?)converter.ConvertFromString(bgColor); 
                 }
             }
             catch (Exception)
             {
-                // Nếu có lỗi khi chuyển đổi màu, giữ nguyên màu mặc định
             }
         }
 
         void Authorize()
         {
-            // Nếu không phải là admin (Type = 0 là nhân viên)
             if (LoggedInAccount.Type == 0)
             {
                 miManageEmployees.Visibility = Visibility.Collapsed;
-                miInvoiceHistory.Visibility = Visibility.Collapsed; // Ẩn Lịch sử hóa đơn
+                miInvoiceHistory.Visibility = Visibility.Collapsed; 
                 miDeleteHistory.Visibility = Visibility.Collapsed;
-                miProfitStatistics.Visibility = Visibility.Collapsed; // Ẩn Thống kê lợi nhuận
+                miProfitStatistics.Visibility = Visibility.Collapsed; 
             }
         }
 
@@ -66,34 +63,27 @@ namespace namm
         {
             if (sender is MenuItem menuItem)
             {
-                // Bật/tắt trạng thái mở của menu con
                 menuItem.IsSubmenuOpen = !menuItem.IsSubmenuOpen;
             }
         }
 
         private void ManageEmployees_Click(object sender, RoutedEventArgs e)
         {
-            // Hiển thị giao diện quản lý nhân viên trong Grid chính
             MainContent.Children.Clear();
             MainContent.Children.Add(new EmployeeView());
         }
 
         private void Logout_Click(object sender, RoutedEventArgs e)
         {
-            // Tạo một cửa sổ đăng nhập mới
             MainWindow loginWindow = new MainWindow();
-            // Hiển thị cửa sổ đăng nhập
             loginWindow.Show();
-            // Đóng cửa sổ chính hiện tại
             this.Close();
         }
 
         private void ChangePassword_Click(object sender, RoutedEventArgs e)
         {
-            // Hiển thị giao diện đổi mật khẩu, truyền thông tin tài khoản đang đăng nhập
             var changePasswordView = new ChangePasswordView(LoggedInAccount);
 
-            // Lắng nghe sự kiện yêu cầu đăng xuất từ ChangePasswordView
             changePasswordView.LogoutRequested += (s, args) => Logout_Click(s!, null!);
 
             MainContent.Children.Clear();

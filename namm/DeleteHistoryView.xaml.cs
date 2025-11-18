@@ -37,13 +37,9 @@ namespace namm
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Mặc định chọn ngày hôm nay để tránh người dùng vô tình xóa ngay lập tức
             dpDate.SelectedDate = DateTime.Today;
-            // lvSelectedDates.ItemsSource = _selectedDatesDetails; // Không còn dùng
             tbResult.Text = "";
             await LoadCustomersAsync();
-            // UpdateDateRangeInfo(); // Sẽ được gọi trong DeleteMode_Changed
-            // Gọi lần đầu để tải dữ liệu cho chế độ mặc định
             DeleteMode_Changed(null, null);
         }
         
@@ -59,26 +55,22 @@ namespace namm
 
         private async void BtnDelete_Click(object sender, RoutedEventArgs e)
         {
-            // Kiểm tra chung cho các chế độ dùng DatePicker
             if (rbOnDate.IsChecked != true && rbByCustomer.IsChecked != true && !dpDate.SelectedDate.HasValue)
             {
                 MessageBox.Show("Vui lòng chọn một ngày.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            // Kiểm tra riêng cho chế độ chọn nhiều ngày
             if (rbOnDate.IsChecked == true && calendarMultiSelect.SelectedDates.Count == 0)
             {
                 MessageBox.Show("Vui lòng chọn ít nhất một ngày trên lịch.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            // Kiểm tra riêng cho chế độ khách hàng
             if (rbByCustomer.IsChecked == true && cbCustomers.SelectedItem == null)
             {
                 MessageBox.Show("Vui lòng chọn một khách hàng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            // Lấy danh sách ID các hóa đơn được chọn để xóa
             var selectedInvoiceIds = (dgInvoicesToDelete.ItemsSource as DataView)?
                 .Cast<DataRowView>()
                 .Where(row => (bool)row["IsSelected"])
@@ -92,10 +84,9 @@ namespace namm
             }
             DateTime selectedDate = dpDate.SelectedDate.Value.Date;
             DateTime startDate;
-            DateTime? endDate = null; // Nullable để xử lý trường hợp "Trước ngày"
+            DateTime? endDate = null; 
             string confirmationMessage;
 
-            // Xác định khoảng thời gian và thông báo xác nhận dựa trên chế độ được chọn
             if (rbBeforeDate.IsChecked == true)
             {
                 startDate = selectedDate;
@@ -106,7 +97,7 @@ namespace namm
                 var selectedDates = calendarMultiSelect.SelectedDates;
                 string datesString = string.Join(", ", selectedDates.Select(d => d.ToString("dd/MM/yyyy")));
                 confirmationMessage = $"Bạn có chắc chắn muốn xóa {selectedInvoiceIds.Count} hóa đơn đã chọn trong các ngày đã chọn không?";
-                startDate = DateTime.MinValue; // Không dùng trong trường hợp này
+                startDate = DateTime.MinValue; 
             }
             else if (rbInWeek.IsChecked == true)
             {
@@ -122,21 +113,20 @@ namespace namm
                 endDate = startDate.AddMonths(1);
                 confirmationMessage = $"Bạn có chắc chắn muốn xóa {selectedInvoiceIds.Count} hóa đơn đã chọn trong tháng {startDate:MM/yyyy} không?";
             }
-            else // rbByCustomer
+            else 
             {
                 var selectedCustomer = (DataRowView)cbCustomers.SelectedItem;
                 string customerName = selectedCustomer["Name"].ToString();
                 confirmationMessage = $"Bạn có chắc chắn muốn xóa {selectedInvoiceIds.Count} hóa đơn đã chọn của khách hàng '{customerName}' không?";
-                startDate = DateTime.MinValue; // Không dùng
+                startDate = DateTime.MinValue; 
             }
 
-            // Hiển thị hộp thoại xác nhận cuối cùng
             var result = MessageBox.Show(
                 $"{confirmationMessage}\n\nHÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC!",
                 "XÁC NHẬN XÓA VĨNH VIỄN",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
-                MessageBoxResult.No); // Mặc định là No
+                MessageBoxResult.No); 
 
             if (result == MessageBoxResult.Yes)
             {
@@ -147,8 +137,7 @@ namespace namm
                 {
                     int billsDeleted = 0;
                     int billInfosDeleted = 0;
-                    
-                    // Tạo danh sách tham số cho câu lệnh IN
+
                     var idParameters = selectedInvoiceIds.Select((id, index) => new SqlParameter($"@id{index}", id)).ToList();
                     var idParamNames = string.Join(", ", idParameters.Select(p => p.ParameterName));
                     string queryCondition = $"ID IN ({idParamNames})";
@@ -158,21 +147,16 @@ namespace namm
                         await connection.OpenAsync();
                         using (var transaction = connection.BeginTransaction())
                         {
-                            // Xóa BillInfo trước, sử dụng cùng điều kiện
                             string deleteBillInfoQuery = $"DELETE FROM BillInfo WHERE BillID IN ({idParamNames})";
                             var cmdBillInfo = new SqlCommand(deleteBillInfoQuery, connection, transaction);
                             cmdBillInfo.Parameters.AddRange(idParameters.ToArray());
                             billInfosDeleted = await cmdBillInfo.ExecuteNonQueryAsync();
 
-                            // Xóa Bill sau
                             string deleteBillQuery = $"DELETE FROM Bill WHERE {queryCondition}";
                             var cmdBill = new SqlCommand(deleteBillQuery, connection, transaction);
-                            // Tạo lại tham số vì chúng đã được dùng ở command trước
                             var idParametersForBill = selectedInvoiceIds.Select((id, index) => new SqlParameter($"@id{index}", id)).ToList();
                             cmdBill.Parameters.AddRange(idParametersForBill.ToArray());
                             billsDeleted = await cmdBill.ExecuteNonQueryAsync();
-
-                            // Nếu mọi thứ thành công, commit transaction
                             transaction.Commit();
                         }
                     }
@@ -187,7 +171,6 @@ namespace namm
                 finally
                 {
                     btnDelete.IsEnabled = true;
-                    // Tải lại danh sách hóa đơn sau khi xóa
                     if (rbOnDate.IsChecked == true) 
                         await UpdateSelectedDatesDetailsAsync();
                     else if (rbByCustomer.IsChecked == true) 
@@ -201,16 +184,10 @@ namespace namm
         {
             if (!this.IsLoaded) return;
 
-            // Ẩn/hiện các control chọn ngày
             dpDate.Visibility = (rbOnDate.IsChecked == true) ? Visibility.Collapsed : Visibility.Visible;
             calendarMultiSelect.Visibility = (rbOnDate.IsChecked == true) ? Visibility.Visible : Visibility.Collapsed;
             cbCustomers.Visibility = (rbByCustomer.IsChecked == true) ? Visibility.Visible : Visibility.Collapsed;
             
-            // Các control cũ không còn dùng
-            // borderTotal.Visibility = (rbOnDate.IsChecked == true) ? Visibility.Visible : Visibility.Collapsed;
-            // lvSelectedDates.Visibility = (rbOnDate.IsChecked == true) ? Visibility.Visible : Visibility.Collapsed;
-
-            // Cập nhật nhãn
             if (rbBeforeDate.IsChecked == true)
             {
                 tbDateSelectionLabel.Text = "Xóa tất cả hóa đơn TRƯỚC ngày:";
@@ -224,7 +201,7 @@ namespace namm
             {
                 tbDateSelectionLabel.Text = "Xóa tất cả hóa đơn trong TUẦN chứa ngày:";
             }
-            else // rbInMonth
+            else 
             {
                 tbDateSelectionLabel.Text = "Xóa tất cả hóa đơn trong THÁNG chứa ngày:";
             }
@@ -235,18 +212,16 @@ namespace namm
                 dpDate.Visibility = Visibility.Collapsed;
                 calendarMultiSelect.Visibility = Visibility.Collapsed;
                 await UpdateCustomerInvoiceInfo();
-                return; // Dừng ở đây cho chế độ khách hàng
+                return; 
             }
-            // Tải lại thông tin và danh sách hóa đơn
             await UpdateDateRangeInfo();
         }
 
         private async void DpDate_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
-        {            // Khi thay đổi ngày, cũng cần cập nhật thông tin hóa đơn nếu đang ở chế độ tuần/tháng
+        {            
             await UpdateDateRangeInfo();
         }
 
-        // Đổi tên và sửa lại để trả về Task, vì có thể gọi DB
         private async Task UpdateDateRangeInfo()
         {
             if (!this.IsLoaded || !dpDate.SelectedDate.HasValue || rbOnDate.IsChecked == true || rbByCustomer.IsChecked == true)
@@ -255,7 +230,6 @@ namespace namm
                 return;
             }
 
-            // Dọn dẹp trước khi tải mới
             dgInvoicesToDelete.ItemsSource = null;
             invoicePreview.Clear();
 
@@ -304,7 +278,6 @@ namespace namm
 
         private async void CalendarMultiSelect_SelectedDatesChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Khi danh sách ngày chọn thay đổi, cập nhật lại bảng chi tiết
             await UpdateSelectedDatesDetailsAsync();
         }
 
@@ -323,7 +296,6 @@ namespace namm
                 return;
             }
 
-            // Dọn dẹp trước khi tải mới
             dgInvoicesToDelete.ItemsSource = null;
             invoicePreview.Clear();
 
@@ -344,22 +316,17 @@ namespace namm
         {
             if (!this.IsLoaded) return;
 
-            // Dọn dẹp
             dgInvoicesToDelete.ItemsSource = null;
             invoicePreview.Clear();
-            // _selectedDatesDetails.Clear(); // Không còn dùng
 
             var selectedDates = calendarMultiSelect.SelectedDates.OrderBy(d => d.Date).ToList();
 
             var invoices = await GetInvoicesForMultipleDatesAsync(selectedDates);
             dgInvoicesToDelete.ItemsSource = invoices.DefaultView;
 
-            // Tính và hiển thị tổng số hóa đơn
             int totalInvoices = invoices.Rows.Count;
             tbDateRangeInfo.Visibility = Visibility.Visible;
             tbDateRangeInfo.Text = $"(Sẽ xóa {totalInvoices} hóa đơn từ {selectedDates.Count} ngày đã chọn)";
-
-            // tbTotalInvoiceCount.Text = $"{totalInvoices} hóa đơn"; // Không còn dùng
         }
 
         private async Task<int> GetInvoiceCountForDateRangeAsync(DateTime startDate, DateTime endDate)
@@ -451,7 +418,6 @@ namespace namm
                     adapter.SelectCommand.Parameters.AddRange(parameters);
                 }
 
-                // Thêm cột IsSelected vào DataTable và đặt giá trị mặc định là true
                 if (!dt.Columns.Contains("IsSelected"))
                 {
                     dt.Columns.Add("IsSelected", typeof(bool)).DefaultValue = true;
@@ -510,20 +476,17 @@ namespace namm
 
         private void CalendarMultiSelect_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Tìm nút ngày được nhấp vào
             if (e.OriginalSource is FrameworkElement originalSource)
             {
                 var dayButton = FindVisualParent<CalendarDayButton>(originalSource);
                 if (dayButton != null && dayButton.DataContext is DateTime clickedDate)
                 {
-                    e.Handled = true; // Ngăn chặn hành vi chọn mặc định
+                    e.Handled = true; 
 
-                    // Tự quản lý việc chọn/bỏ chọn
                     if (calendarMultiSelect.SelectedDates.Contains(clickedDate))
                         calendarMultiSelect.SelectedDates.Remove(clickedDate);
                     else
                         calendarMultiSelect.SelectedDates.Add(clickedDate);
-                    // Sự kiện SelectedDatesChanged sẽ được kích hoạt và tự động gọi UpdateSelectedDatesDetailsAsync()
                 }
             }
         }
@@ -538,7 +501,6 @@ namespace namm
 
         private async void PreviewInvoice_Click(object sender, RoutedEventArgs e)
         {
-            // Lấy dữ liệu của hàng từ CommandParameter của nút
             if ((sender as Button)?.CommandParameter is DataRowView selectedInvoice)
             {
                 int billId = (int)selectedInvoice["ID"];

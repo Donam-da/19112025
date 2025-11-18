@@ -7,8 +7,8 @@ namespace namm
     {
         public int DrinkId { get; set; }
         public string DrinkName { get; set; } = string.Empty;
-        public string DrinkTypeCode { get; set; } = string.Empty; // Mã kiểu đồ uống (ví dụ: caphesua_NB)
-        public string DrinkType { get; set; } = string.Empty; // "Nguyên bản" hoặc "Pha chế"
+        public string DrinkTypeCode { get; set; } = string.Empty; 
+        public string DrinkType { get; set; } = string.Empty; 
 
         private int _quantity;
         public int Quantity
@@ -19,8 +19,8 @@ namespace namm
                 if (_quantity != value)
                 {
                     _quantity = value;
-                    OnPropertyChanged(); // Thông báo Quantity đã thay đổi
-                    OnPropertyChanged(nameof(TotalPrice)); // Thông báo TotalPrice cũng thay đổi theo
+                    OnPropertyChanged(); 
+                    OnPropertyChanged(nameof(TotalPrice)); 
                 }
             }
         }

@@ -13,7 +13,7 @@
             <ColumnDefinition Width="350"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Cột 1: Danh sách loại đồ uống -->
+        
         <DockPanel Grid.Column="0" Margin="0,0,10,0">
             <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
                 <TextBlock Text="DANH SÁCH LOẠI ĐỒ UỐNG" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
@@ -30,7 +30,7 @@
             </DataGrid>
         </DockPanel>
 
-        <!-- Cột 2: Thông tin chi tiết và chức năng -->
+       
         <DockPanel Grid.Column="1">
             <TextBlock DockPanel.Dock="Top" Text="THÔNG TIN CHI TIẾT" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
             <StackPanel>

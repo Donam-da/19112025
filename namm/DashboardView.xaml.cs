@@ -17,7 +17,6 @@ namespace namm
         private string connectionString = ConfigurationManager.ConnectionStrings["CafeDB"].ConnectionString;
         private DataTable? menuDataTable;
         private DataTable? tableDataTable;
-        // Lưu trữ hóa đơn cho mỗi bàn, với Key là TableID
         private readonly Dictionary<int, ObservableCollection<BillItem>> billsByTable = new Dictionary<int, ObservableCollection<BillItem>>();
         private readonly AccountDTO? loggedInAccount;
 
@@ -31,14 +30,12 @@ namespace namm
         {
             try
             {
-                // Tải dữ liệu song song để tăng tốc độ khởi động và giữ cho UI luôn phản hồi.
                 var loadTablesTask = LoadTables();
                 var loadCategoriesTask = LoadCategories();
                 var loadMenuTask = LoadMenu();
 
                 await Task.WhenAll(loadTablesTask, loadCategoriesTask, loadMenuTask);
 
-                // Gắn sự kiện sau khi đã tải xong dữ liệu ban đầu
                 cbCategory.SelectionChanged += CbCategory_SelectionChanged;
             }
             catch (Exception ex)
@@ -51,18 +48,15 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                // Thêm mục "Tất cả" vào danh sách
                 const string query = "SELECT 0 AS ID, N'Tất cả' AS Name UNION ALL SELECT ID, Name FROM Category WHERE IsActive = 1 ORDER BY Name";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 var categoryTable = new DataTable();
-                // Sử dụng Task.Run để chạy tác vụ Fill trên một luồng nền.
                 await Task.Run(() => adapter.Fill(categoryTable));
 
-                // Sau khi await, chúng ta đã quay lại luồng UI, có thể cập nhật trực tiếp.
                 cbCategory.ItemsSource = categoryTable.DefaultView;
                 cbCategory.SelectedValuePath = "ID";
                 cbCategory.DisplayMemberPath = "Name";
-                cbCategory.SelectedIndex = 0; // Mặc định chọn "Tất cả"
+                cbCategory.SelectedIndex = 0; 
             }
         }
 
@@ -70,14 +64,12 @@ namespace namm
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                // Chỉ lấy những đồ uống đang được kích hoạt để hiển thị trên menu
                 const string query = "SELECT ID, Name, DrinkCode, ActualPrice, CategoryID FROM Drink WHERE IsActive = 1 ORDER BY Name";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 menuDataTable = new DataTable();
                 menuDataTable.Columns.Add("STT", typeof(int));
                 await Task.Run(() => adapter.Fill(menuDataTable));
 
-                // Sau khi await, chúng ta đã quay lại luồng UI, có thể cập nhật trực tiếp.
                 dgMenu.ItemsSource = menuDataTable.DefaultView;
             }
         }
@@ -92,7 +84,6 @@ namespace namm
                 tableDataTable.Columns.Add("STT", typeof(int));
                 await Task.Run(() => adapter.Fill(tableDataTable));
 
-                // Sau khi await, chúng ta đã quay lại luồng UI, có thể cập nhật trực tiếp.
                 dgTables.ItemsSource = tableDataTable.DefaultView;
             }
         }
@@ -111,13 +102,13 @@ namespace namm
 
             int categoryId = (int)cbCategory.SelectedValue;
 
-            if (categoryId == 0) // 0 là ID của "Tất cả"
+            if (categoryId == 0) 
             {
-                menuDataTable.DefaultView.RowFilter = string.Empty; // Xóa bộ lọc
+                menuDataTable.DefaultView.RowFilter = string.Empty; 
             }
             else
             {
-                menuDataTable.DefaultView.RowFilter = $"CategoryID = {categoryId}"; // Lọc theo CategoryID
+                menuDataTable.DefaultView.RowFilter = $"CategoryID = {categoryId}"; 
             }
         }
 
@@ -147,16 +138,13 @@ namespace namm
                 tbSelectedTable.FontStyle = FontStyles.Normal;
                 tbSelectedTable.Foreground = System.Windows.Media.Brushes.Black;
 
-                // Tải hóa đơn chưa thanh toán từ DB cho bàn này
                 int tableId = (int)selectedTable["ID"];
                 var billItems = await LoadUnpaidBillForTableAsync(tableId);
                 billsByTable[tableId] = billItems;
 
-                // Hiển thị hóa đơn của bàn đã chọn
                 dgBill.ItemsSource = billItems;
                 UpdateTotalAmount();
 
-                // Sau khi tải hóa đơn, đồng bộ lại trạng thái bàn cho chính xác
                 SyncTableStatusBasedOnBill();
             }
             else
@@ -165,7 +153,6 @@ namespace namm
                 tbSelectedTable.FontStyle = FontStyles.Italic;
                 tbSelectedTable.Foreground = System.Windows.Media.Brushes.Gray;
 
-                // Khi không có bàn nào được chọn, xóa hiển thị hóa đơn
                 dgBill.ItemsSource = null;
                 UpdateTotalAmount();
             }
@@ -186,7 +173,6 @@ namespace namm
                     int drinkId = (int)selectedDrinkRow["ID"];
                     string drinkName = selectedDrinkRow["Name"].ToString() ?? "Không tên";
 
-                    // Lấy dữ liệu tồn kho một cách bất đồng bộ để không làm treo UI
                     var availableStock = await GetDrinkStockAsync(drinkId);
 
                     if (!availableStock.Any())
@@ -200,7 +186,6 @@ namespace namm
 
                     if (dialog.ShowDialog() == true)
                     {
-                        // Lấy hóa đơn của bàn hiện tại
                         int currentTableId = (int)((DataRowView)dgTables.SelectedItem)["ID"];
                         var currentBillItems = billsByTable[currentTableId];
 
@@ -228,10 +213,8 @@ namespace namm
                                     Price = price 
                                 });
                             }
-                            // Cập nhật kho cho món vừa được thêm/cập nhật
                             await UpdateStockForDrinkAsync(drinkId, drinkType, quantity);
                         }
-                        // Sau khi xử lý tất cả các món, lưu toàn bộ hóa đơn vào DB
                         await SaveBillToDbAsync(currentTableId, currentBillItems);
 
                         UpdateTotalAmount();
@@ -247,7 +230,6 @@ namespace namm
 
         private void UpdateTotalAmount()
         {
-            // Tính tổng tiền dựa trên hóa đơn đang được hiển thị
             if (dgBill.ItemsSource is ObservableCollection<BillItem> currentBillItems)
             {
                 decimal total = currentBillItems.Sum(item => item.TotalPrice);
@@ -263,21 +245,16 @@ namespace namm
         {
             if ((sender as Button)?.CommandParameter is BillItem itemToRemove && dgBill.ItemsSource is ObservableCollection<BillItem> currentBillItems)
             {
-                // Trước khi xóa, hoàn trả lại số lượng vào kho
-                // Chạy tác vụ này ở chế độ nền
                 _ = UpdateStockForDrinkAsync(itemToRemove.DrinkId, itemToRemove.DrinkType, -itemToRemove.Quantity);
 
                 currentBillItems.Remove(itemToRemove);
                 UpdateTotalAmount();
 
-                // Nếu hóa đơn trống sau khi xóa, chuyển trạng thái bàn về "Trống"
                 if (currentBillItems.Any())
                 {
-                    // Nếu hóa đơn vẫn còn món, chỉ cập nhật lại DB
                     int currentTableId = (int)((DataRowView)dgTables.SelectedItem)["ID"];
                     await SaveBillToDbAsync(currentTableId, currentBillItems);
                 }
-                // Sau khi xóa món, đồng bộ lại trạng thái bàn
                 SyncTableStatusBasedOnBill();
             }
         }
@@ -287,18 +264,15 @@ namespace namm
             var stock = new Dictionary<string, int>();
             using (var connection = new SqlConnection(connectionString))
             {
-                // 1. Lấy số lượng tồn kho của đồ uống nguyên bản
                 var cmdOriginal = new SqlCommand("SELECT StockQuantity FROM Drink WHERE ID = @ID AND OriginalPrice > 0", connection);
                 cmdOriginal.Parameters.AddWithValue("@ID", drinkId);
 
-                // 2. Tính số lượng có thể làm của đồ uống pha chế
                 var cmdRecipe = new SqlCommand(@"
                     SELECT MIN(FLOOR(m.Quantity / r.Quantity))
                     FROM Recipe r
                     JOIN Material m ON r.MaterialID = m.ID
                     JOIN Drink d ON r.DrinkID = d.ID
                     WHERE r.DrinkID = @ID AND d.IsRecipeActive = 1
-                    -- Chỉ tính khi có công thức tồn tại
                     HAVING COUNT(r.DrinkID) > 0", connection);
                 cmdRecipe.Parameters.AddWithValue("@ID", drinkId);
 
@@ -334,15 +308,12 @@ namespace namm
             }
             catch (Exception ex)
             {
-                // Ghi lại lỗi hoặc hiển thị một thông báo không làm phiền người dùng
                 MessageBox.Show($"Không thể cập nhật trạng thái bàn vào cơ sở dữ liệu: {ex.Message}", "Lỗi nền", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private async Task UpdateStockForDrinkAsync(int drinkId, string drinkType, int quantityChange)
         {
-            // quantityChange > 0: Trừ kho (thêm món)
-            // quantityChange < 0: Hoàn kho (xóa món)
             if (quantityChange == 0) return;
 
             using (var connection = new SqlConnection(connectionString))
@@ -357,7 +328,6 @@ namespace namm
                 }
                 else if (drinkType == "Pha chế")
                 {
-                    // Lấy công thức của đồ uống
                     var recipeCmd = new SqlCommand("SELECT MaterialID, Quantity FROM Recipe WHERE DrinkID = @DrinkID", connection);
                     recipeCmd.Parameters.AddWithValue("@DrinkID", drinkId);
 
@@ -370,7 +340,6 @@ namespace namm
                         }
                     }
 
-                    // Cập nhật số lượng cho từng nguyên liệu
                     foreach (var material in materialsToUpdate)
                     {
                         var updateMaterialCmd = new SqlCommand("UPDATE Material SET Quantity = Quantity - @QuantityChange WHERE ID = @MaterialID", connection);
@@ -388,7 +357,6 @@ namespace namm
             var billItems = new ObservableCollection<BillItem>();
             using (var connection = new SqlConnection(connectionString))
             {
-                // Tìm hóa đơn chưa thanh toán (Status = 0) của bàn
                 const string query = @"                    SELECT bi.DrinkID, d.Name, bi.DrinkType, bi.Quantity, bi.Price, d.DrinkCode
                     FROM BillInfo bi
                     JOIN Bill b ON bi.BillID = b.ID
@@ -408,7 +376,6 @@ namespace namm
 
                         billItems.Add(new BillItem
                         {
-                            // Xây dựng lại DrinkTypeCode khi tải từ DB
                             DrinkTypeCode = $"{baseDrinkCode}_{(drinkType == "Nguyên bản" ? "NB" : "PC")}",
                             DrinkId = reader.GetInt32(0),
                             DrinkName = reader.GetString(1),
@@ -431,7 +398,6 @@ namespace namm
                 {
                     try
                     {
-                        // 1. Tìm hoặc tạo hóa đơn chưa thanh toán cho bàn
                         var cmdFindBill = new SqlCommand("SELECT ID FROM Bill WHERE TableID = @TableID AND Status = 0", connection, transaction);
                         cmdFindBill.Parameters.AddWithValue("@TableID", tableId);
                         var billIdResult = await cmdFindBill.ExecuteScalarAsync();
@@ -440,25 +406,21 @@ namespace namm
                         if (billIdResult != null)
                         {
                             billId = (int)billIdResult;
-                            // Xóa các chi tiết hóa đơn cũ để ghi đè
                             var cmdDeleteInfo = new SqlCommand("DELETE FROM BillInfo WHERE BillID = @BillID", connection, transaction);
                             cmdDeleteInfo.Parameters.AddWithValue("@BillID", billId);
                             await cmdDeleteInfo.ExecuteNonQueryAsync();
                         }
                         else
                         {
-                            // Tạo hóa đơn mới
                             var cmdCreateBill = new SqlCommand("INSERT INTO Bill (TableID, Status) OUTPUT INSERTED.ID VALUES (@TableID, 0)", connection, transaction);
                             cmdCreateBill.Parameters.AddWithValue("@TableID", tableId);
                             billId = (int)await cmdCreateBill.ExecuteScalarAsync();
                         }
 
-                        // 2. Thêm các chi tiết hóa đơn mới
                         foreach (var item in billItems)
                         {
                             var cmdInsertInfo = new SqlCommand("INSERT INTO BillInfo (BillID, DrinkID, DrinkType, Quantity, Price) VALUES (@BillID, @DrinkID, @DrinkType, @Quantity, @Price)", connection, transaction);
                             cmdInsertInfo.Parameters.AddWithValue("@BillID", billId);
-                            // Lưu ý: DrinkTypeCode không được lưu vào DB, nó chỉ dùng để hiển thị
                             cmdInsertInfo.Parameters.AddWithValue("@DrinkID", item.DrinkId);
                             cmdInsertInfo.Parameters.AddWithValue("@DrinkType", item.DrinkType);
                             cmdInsertInfo.Parameters.AddWithValue("@Quantity", item.Quantity);
@@ -466,7 +428,6 @@ namespace namm
                             await cmdInsertInfo.ExecuteNonQueryAsync();
                         }
 
-                        // 3. Cập nhật tổng tiền cho hóa đơn
                         decimal totalAmount = billItems.Sum(i => i.TotalPrice);
                         var cmdUpdateTotal = new SqlCommand("UPDATE Bill SET TotalAmount = @TotalAmount WHERE ID = @BillID", connection, transaction);
                         cmdUpdateTotal.Parameters.AddWithValue("@TotalAmount", totalAmount);
@@ -478,7 +439,7 @@ namespace namm
                     catch (Exception)
                     {
                         transaction.Rollback();
-                        throw; // Ném lại lỗi để được xử lý ở lớp ngoài
+                        throw; 
                     }
                 }
             }
@@ -488,7 +449,6 @@ namespace namm
         {
             using (var connection = new SqlConnection(connectionString))
             {
-                // Để đảm bảo an toàn, chúng ta sẽ xóa các BillInfo trước, sau đó mới xóa Bill
                 const string query = @"
                     DELETE FROM BillInfo WHERE BillID IN (SELECT ID FROM Bill WHERE TableID = @TableID AND Status = 0);
                     DELETE FROM Bill WHERE TableID = @TableID AND Status = 0;";
@@ -510,14 +470,11 @@ namespace namm
 
                 if (currentBill.Any())
                 {
-                    // Nếu hóa đơn có món, trạng thái phải là "Có người"
                     newStatus = "Có người";
                 }
                 else
                 {
-                    // Nếu hóa đơn trống, trạng thái phải là "Trống"
                     newStatus = "Trống";
-                    // Đồng thời xóa hóa đơn rỗng khỏi DB
                     _ = ClearBillFromDbAsync(tableId);
                 }
 
@@ -531,25 +488,20 @@ namespace namm
 
         private void BtnPay_Click(object sender, RoutedEventArgs e)
         {
-            // 1. Kiểm tra đã chọn bàn và có hóa đơn chưa
             if (dgTables.SelectedItem == null || !(dgBill.ItemsSource is ObservableCollection<BillItem> currentBill) || !currentBill.Any())
             {
                 MessageBox.Show("Vui lòng chọn bàn có hóa đơn để thanh toán.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // 2. Lấy thông tin cần thiết để truyền đi
             var selectedTable = (DataRowView)dgTables.SelectedItem;
             int tableId = (int)selectedTable["ID"];
             string tableName = selectedTable["Name"].ToString();
 
-            // 3. Chuyển sang màn hình chọn khách hàng
             var mainAppWindow = Window.GetWindow(this) as MainAppWindow;
             if (mainAppWindow != null)
             {
-                // Xóa nội dung cũ và thêm view mới vào
                 mainAppWindow.MainContent.Children.Clear();
-                // Lấy thông tin tài khoản đang đăng nhập từ MainAppWindow và truyền vào
                 mainAppWindow.MainContent.Children.Add(new SelectCustomerView(tableId, tableName, currentBill, mainAppWindow.LoggedInAccount));
             }
         }

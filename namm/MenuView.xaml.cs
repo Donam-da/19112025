@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -55,8 +55,8 @@ namespace namm
                             WHEN EXISTS (SELECT 1 FROM Recipe r WHERE r.DrinkID = d.ID) THEN N'Pha chế'
                             ELSE N'Chưa gán' 
                         END AS DrinkType
-                    FROM Drink d 
-                    LEFT JOIN Category c ON d.CategoryID = c.ID ORDER BY d.Name"; // Removed WHERE d.IsActive = 1
+                    FROM Drink d
+                    LEFT JOIN Category c ON d.CategoryID = c.ID ORDER BY d.Name"; 
 
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 menuDataTable = new DataTable();
@@ -89,21 +89,18 @@ namespace namm
         {
             if (dgMenuItems.SelectedItem is DataRowView row)
             {
-                // Tạm ngắt sự kiện để tránh tạo mã mới khi đang chọn
                 txtName.LostFocus -= TxtName_LostFocus;
 
                 txtName.Text = row["Name"] as string ?? string.Empty;
                 txtDrinkCode.Text = row["DrinkCode"] as string ?? string.Empty;
-                cbCategory.SelectedValue = row["CategoryID"]; // This should work if CategoryID is not null
+                cbCategory.SelectedValue = row["CategoryID"]; 
                 chkIsActive.IsChecked = Convert.ToBoolean(row["IsActive"]);
 
-                // Bật lại sự kiện
                 txtName.LostFocus += TxtName_LostFocus;
 
-                // Cập nhật trạng thái các nút: Tắt Thêm, Bật Sửa/Xóa
                 btnAdd.IsEnabled = false;
                 btnUpdate.IsEnabled = true;
-                btnHide.IsEnabled = true; // Sửa từ btnDelete sang btnHide
+                btnHide.IsEnabled = true; 
             }
             else
             {
@@ -187,7 +184,6 @@ namespace namm
 
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
-                        // Thay đổi từ DELETE sang UPDATE IsActive = 0
                         const string query = "UPDATE Drink SET IsActive = 0 WHERE ID = @ID";
                         SqlCommand command = new SqlCommand(query, connection);
                         command.Parameters.AddWithValue("@ID", drinkId);
@@ -215,7 +211,6 @@ namespace namm
                 int drinkId = (int)row["ID"];
                 string drinkName = row["Name"].ToString() ?? "Không tên";
 
-                // Kiểm tra xem đồ uống có tồn tại trong bất kỳ hóa đơn nào không
                 bool isInBill = false;
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
@@ -268,16 +263,14 @@ namespace namm
 
         private void TxtName_LostFocus(object sender, RoutedEventArgs e)
         {
-            // Chỉ tạo mã khi người dùng đang thêm mới (chưa chọn item nào từ grid)
             if (dgMenuItems.SelectedItem == null)
             {
-                txtDrinkCode.Text = GenerateMenuCode(txtName.Text); // Logic tạo mã vẫn giữ nguyên
+                txtDrinkCode.Text = GenerateMenuCode(txtName.Text); 
             }
         }
 
         private string GenerateMenuCode(string drinkName)
         {
-            // Chuyển tên đồ uống thành mã không dấu, không khoảng trắng, không ký tự đặc biệt
             string temp = drinkName.ToLower();
             temp = Regex.Replace(temp, "[áàảãạâấầẩẫậăắằẳẵặ]", "a");
             temp = Regex.Replace(temp, "[éèẻẽẹêếềểễệ]", "e");
@@ -286,7 +279,6 @@ namespace namm
             temp = Regex.Replace(temp, "[úùủũụưứừửữự]", "u");
             temp = Regex.Replace(temp, "[ýỳỷỹỵ]", "y");
             temp = Regex.Replace(temp, "[đ]", "d");
-            // Bỏ các ký tự đặc biệt và khoảng trắng
             temp = Regex.Replace(temp.Replace(" ", ""), "[^a-z0-9]", "");
             return temp;
         }
@@ -321,10 +313,9 @@ namespace namm
             chkIsActive.IsChecked = true;
             dgMenuItems.SelectedItem = null;
 
-            // Đặt lại trạng thái các nút: Bật Thêm, Tắt Sửa/Xóa
             btnAdd.IsEnabled = true;
             btnUpdate.IsEnabled = false;
-            btnHide.IsEnabled = false; // Sửa từ btnDelete sang btnHide
+            btnHide.IsEnabled = false; 
         }
     }
 }

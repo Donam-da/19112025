@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -28,7 +28,7 @@ namespace namm
                 string query = "SELECT UserName, DisplayName, Password, Type, PhoneNumber, Address FROM Account";
                 SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
                 DataTable dataTable = new DataTable();
-                dataTable.Columns.Add("STT", typeof(int)); // Thêm cột STT vào DataTable
+                dataTable.Columns.Add("STT", typeof(int)); 
                 adapter.Fill(dataTable);
 
                 dgAccounts.ItemsSource = dataTable.DefaultView;
@@ -44,9 +44,17 @@ namespace namm
                 txtPhoneNumber.Text = row["PhoneNumber"]?.ToString();
                 txtAddress.Text = row["Address"]?.ToString();
                 cbAccountType.SelectedIndex = Convert.ToInt32(row["Type"]);
-                // Hiển thị mật khẩu khi chọn
                 txtPassword.Text = row["Password"]?.ToString();
-                txtUserName.IsEnabled = false; // Không cho sửa tên đăng nhập (khóa chính)
+                txtUserName.IsEnabled = false; 
+
+                btnAdd.IsEnabled = false;
+                btnEdit.IsEnabled = true;
+                btnDelete.IsEnabled = true;
+            }
+            else
+            {
+                // Nếu không có dòng nào được chọn (ví dụ sau khi làm mới), đặt lại các trường
+                ResetFields();
             }
         }
 
@@ -54,7 +62,6 @@ namespace namm
         {
             if (e.Row.Item is DataRowView rowView)
             {
-                // Gán giá trị cho cột STT
                 rowView["STT"] = e.Row.GetIndex() + 1;
             }
         }
@@ -80,7 +87,7 @@ namespace namm
                 SqlCommand command = new SqlCommand(query, connection);
                 command.Parameters.AddWithValue("@UserName", userName);
                 command.Parameters.AddWithValue("@DisplayName", displayName);
-                command.Parameters.AddWithValue("@Password", password); // Cảnh báo: Không an toàn
+                command.Parameters.AddWithValue("@Password", password); 
                 command.Parameters.AddWithValue("@Type", type);
                 command.Parameters.AddWithValue("@PhoneNumber", string.IsNullOrWhiteSpace(phone) ? (object)DBNull.Value : phone);
                 command.Parameters.AddWithValue("@Address", string.IsNullOrWhiteSpace(address) ? (object)DBNull.Value : address);
@@ -110,21 +117,18 @@ namespace namm
 
             string userName = txtUserName.Text;
             string displayName = txtDisplayName.Text;
-            string password = txtPassword.Text; // Nếu mật khẩu trống, ta không cập nhật
+            string password = txtPassword.Text; 
             string phone = txtPhoneNumber.Text;
             string address = txtAddress.Text;
             int type = Convert.ToInt32(((ComboBoxItem)cbAccountType.SelectedItem).Tag);
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                // Nếu người dùng không nhập mật khẩu mới, giữ nguyên mật khẩu cũ
-                // Luôn cập nhật mật khẩu từ textbox để đảm bảo đồng bộ
                 string query = "UPDATE Account SET DisplayName=@DisplayName, Password=@Password, Type=@Type, PhoneNumber=@PhoneNumber, Address=@Address WHERE UserName=@UserName";
 
                 SqlCommand command = new SqlCommand(query, connection);
                 command.Parameters.AddWithValue("@UserName", userName);
                 command.Parameters.AddWithValue("@DisplayName", displayName);
-                // Nếu mật khẩu trống, báo lỗi thay vì không cập nhật
                 if (string.IsNullOrWhiteSpace(password))
                 {
                     MessageBox.Show("Mật khẩu không được để trống khi cập nhật.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -183,6 +187,10 @@ namespace namm
             cbAccountType.SelectedIndex = 0;
             dgAccounts.SelectedItem = null;
             txtUserName.IsEnabled = true;
+
+            btnAdd.IsEnabled = true;
+            btnEdit.IsEnabled = false;
+            btnDelete.IsEnabled = false;
         }
     }
 }

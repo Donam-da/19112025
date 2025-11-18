@@ -1,4 +1,4 @@
-﻿﻿using System.Collections.Generic;
+﻿﻿﻿﻿using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
@@ -8,7 +8,6 @@ namespace namm
 {
     public partial class SelectDrinkTypeDialog : Window
     {
-        // Key: Tên kiểu (ví dụ: "Nguyên bản"), Value: TextBox nhập số lượng
         private readonly Dictionary<string, (TextBox textBox, int stock)> _typeControls = new Dictionary<string, (TextBox, int)>();
         public Dictionary<string, int> SelectedQuantities { get; } = new Dictionary<string, int>();
 
@@ -18,16 +17,13 @@ namespace namm
             tbDrinkName.Text = drinkName;
 
             int rowIndex = 0;
-            // Tự động tạo các ô nhập liệu dựa trên các kiểu có sẵn
             foreach (var typeStockPair in availableStock)
             {
                 string typeName = typeStockPair.Key;
                 int stock = typeStockPair.Value;
 
-                // Thêm một dòng mới cho mỗi kiểu
                 gridDrinkTypes.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-                // Tên kiểu (Nguyên bản, Pha chế)
                 var typeLabel = new TextBlock
                 {
                     Text = $"{typeName}:",
@@ -38,19 +34,17 @@ namespace namm
                 Grid.SetRow(typeLabel, rowIndex);
                 Grid.SetColumn(typeLabel, 0);
 
-                // Panel chứa ô nhập và số lượng tồn
                 var inputPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 Grid.SetRow(inputPanel, rowIndex);
                 Grid.SetColumn(inputPanel, 1);
 
-                // Ô nhập số lượng
                 var textBox = new TextBox
                 {
                     Name = "txt" + typeName.Replace(" ", ""),
                     Text = "", // Để trống ô nhập liệu
                     Width = 50,
-                    VerticalContentAlignment = VerticalAlignment.Center, // Căn giữa theo chiều dọc
-                    HorizontalContentAlignment = HorizontalAlignment.Center // Căn giữa theo chiều ngang
+                    VerticalContentAlignment = VerticalAlignment.Center, 
+                    HorizontalContentAlignment = HorizontalAlignment.Center 
                 };
                 var stockLabel = new TextBlock { Text = $"/ {stock}", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0), Foreground = Brushes.Gray };
 
@@ -77,7 +71,6 @@ namespace namm
                 TextBox textBox = pair.Value.textBox;
                 int stock = pair.Value.stock;
 
-                // Nếu ô nhập trống, coi như số lượng là 0 và bỏ qua
                 if (string.IsNullOrWhiteSpace(textBox.Text))
                 {
                     continue;
@@ -124,7 +117,6 @@ namespace namm
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // Focus vào ô nhập liệu đầu tiên
             _typeControls.Values.FirstOrDefault().textBox?.Focus();
         }
     }

@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Configuration;
@@ -21,7 +21,6 @@ namespace namm
         public decimal Threshold { get; set; }
         public decimal DiscountPercent { get; set; }
 
-        // Không cần INotifyPropertyChanged và IsAppliedToSelectedCustomer nữa
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
@@ -42,8 +41,8 @@ namespace namm
             try
             {
                 lvDiscountRules.ItemsSource = discountRules;
-                await LoadDiscountRulesAsync(); // Tải các quy tắc đã lưu
-                await LoadLoyalCustomersAsync(); // Tải danh sách khách hàng
+                await LoadDiscountRulesAsync(); 
+                await LoadLoyalCustomersAsync(); 
             }
             catch (Exception ex)
             {
@@ -65,7 +64,6 @@ namespace namm
                         COUNT(DISTINCT b.ID) AS PurchaseCount,
                         ISNULL(SUM(b.TotalAmount), 0) AS TotalSpent,
                         ISNULL(SUM(b.SubTotal - b.TotalAmount), 0) AS TotalDiscountGiven,
-                        -- Logic mới: Hiển thị mức giảm giá cao nhất mà khách hàng có thể đạt được
                         (SELECT FORMAT(ISNULL(MAX(dr.DiscountPercent), 0), 'G29') + '%' FROM DiscountRule dr WHERE (dr.CriteriaType = N'Số lần mua' AND COUNT(DISTINCT b.ID) >= dr.Threshold) OR (dr.CriteriaType = N'Tổng chi tiêu' AND ISNULL(SUM(b.TotalAmount), 0) >= dr.Threshold)) AS AppliedRuleDescription
                     FROM Customer c
                     LEFT JOIN Bill b ON c.ID = b.IdCustomer AND b.Status = 1
@@ -76,11 +74,10 @@ namespace namm
                 var adapter = new SqlDataAdapter(query, connection);
                 customerTable = new DataTable();
                 customerTable.Columns.Add("STT", typeof(int));
-                customerTable.Columns.Add("Discount", typeof(decimal)); // Thêm cột giảm giá
+                customerTable.Columns.Add("Discount", typeof(decimal)); 
 
                 await Task.Run(() => adapter.Fill(customerTable));
 
-                // Gán giá trị cho cột Discount, STT sẽ được xử lý trong sự kiện LoadingRow
                 for (int i = 0; i < customerTable.Rows.Count; i++)
                 {
                     customerTable.Rows[i]["Discount"] = customerTable.Rows[i]["TotalDiscountGiven"];
@@ -134,7 +131,6 @@ namespace namm
 
             string criteriaType = ((ComboBoxItem)cbCriteriaType.SelectedItem).Content.ToString();
 
-            // Lưu vào DB
             using (var connection = new SqlConnection(connectionString))
             {
                 const string query = "INSERT INTO DiscountRule (CriteriaType, Threshold, DiscountPercent) OUTPUT INSERTED.ID VALUES (@CriteriaType, @Threshold, @DiscountPercent)";
@@ -148,7 +144,6 @@ namespace namm
                     await connection.OpenAsync();
                     int newId = (int)await command.ExecuteScalarAsync();
 
-                    // Thêm vào danh sách trên UI
                     discountRules.Add(new DiscountRule
                     {
                         ID = newId,
@@ -157,7 +152,6 @@ namespace namm
                         DiscountPercent = discountPercent
                     });
 
-                    // Reset input fields
                     cbCriteriaType.SelectedIndex = -1;
                     txtThreshold.Clear();
                     txtDiscountPercent.Clear();
@@ -171,7 +165,6 @@ namespace namm
 
         private async void BtnRemoveRule_Click(object sender, RoutedEventArgs e)
         {
-            // Lấy tất cả các quy tắc được chọn
             var selectedRules = lvDiscountRules.SelectedItems.Cast<DiscountRule>().ToList();
 
             if (selectedRules.Any())
@@ -185,16 +178,13 @@ namespace namm
                 var idsToDelete = selectedRules.Select(r => r.ID).ToList();
                 string idList = string.Join(",", idsToDelete);
 
-                // Xóa khỏi DB
                 using (var connection = new SqlConnection(connectionString))
                 {
-                    // Xóa nhiều mục cùng lúc bằng IN clause
                     var command = new SqlCommand($"DELETE FROM DiscountRule WHERE ID IN ({idList})", connection);
                     await connection.OpenAsync();
                     await command.ExecuteNonQueryAsync();
                 }
 
-                // Xóa khỏi UI (cần duyệt ngược để tránh lỗi khi xóa item khỏi collection)
                 foreach (var rule in selectedRules)
                 {
                     discountRules.Remove(rule);
@@ -208,8 +198,6 @@ namespace namm
 
         private void DgLoyalCustomers_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            // Gán lại số thứ tự dựa trên vị trí hiển thị của hàng trong DataGrid.
-            // Điều này đảm bảo STT luôn đúng thứ tự 1, 2, 3,... ngay cả khi sắp xếp.
             if (e.Row.Item is DataRowView rowView)
             {
                 rowView.Row["STT"] = e.Row.GetIndex() + 1;
@@ -233,7 +221,6 @@ namespace namm
 
         private void LvDiscountRules_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Bật các nút áp dụng khi có ít nhất 1 mức giảm giá được chọn
             bool anyRuleSelected = lvDiscountRules.SelectedItems.Count > 0;
             btnRemoveRule.IsEnabled = anyRuleSelected;
         }
@@ -253,20 +240,12 @@ namespace namm
 
         private async Task ApplyRulesToCustomers(List<int> customerIds, List<int> ruleIds)
         {
-            // In the current design, rules are applied dynamically at checkout,
-            // so there's no direct database update needed here to link a rule to a customer.
-            // This action can be considered a "refresh" to ensure the view is up-to-date.
-
-            // We can just show a success message and reload the customer data.
             MessageBox.Show($"Thao tác thành công. Dữ liệu khách hàng sẽ được làm mới.",
                             "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
 
             await LoadLoyalCustomersAsync();
         }
 
-        // Phương thức này đã bị xóa khỏi XAML và không còn được sử dụng.
-        // Việc giữ lại nó sẽ gây lỗi nếu XAML cũ vẫn còn tham chiếu.
-        // Vì vậy, chúng ta sẽ xóa nó hoàn toàn.
         private void DataGridRow_PreviewMouseLeftButtonDown_Selection(object sender, System.Windows.Input.MouseButtonEventArgs e) { }
 
         private void HeaderCheckBox_Click(object sender, RoutedEventArgs e)
@@ -274,11 +253,6 @@ namespace namm
             bool isChecked = (sender as CheckBox)?.IsChecked ?? false;
             if (dgLoyalCustomers.ItemsSource is DataView dataView)
             {
-                // This part of the logic seems to be missing or incorrect in the original code.
-                // This is a placeholder for selecting all customers.
-                // For now, we will just iterate and set a non-existent 'IsSelected' property,
-                // which would require changes to the DataTable to work fully.
-                // This is left as-is to match potential implicit logic.
             }
         }
 
@@ -304,7 +278,6 @@ namespace namm
             {
                 await connection.OpenAsync();
 
-                // Kiểm tra xem khách hàng có lịch sử giao dịch không
                 var checkBillCmd = new SqlCommand("SELECT COUNT(1) FROM Bill WHERE IdCustomer = @CustomerId", connection);
                 checkBillCmd.Parameters.AddWithValue("@CustomerId", customerId);
                 int billCount = (int)await checkBillCmd.ExecuteScalarAsync();
@@ -316,7 +289,6 @@ namespace namm
                     return;
                 }
 
-                // Nếu không có giao dịch, tiến hành xóa
                 var deleteCmd = new SqlCommand("DELETE FROM Customer WHERE ID = @ID", connection);
                 deleteCmd.Parameters.AddWithValue("@ID", customerId);
 
@@ -324,7 +296,7 @@ namespace namm
                 if (rowsAffected > 0)
                 {
                     MessageBox.Show("Xóa khách hàng thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                    await LoadLoyalCustomersAsync(); // Tải lại danh sách khách hàng
+                    await LoadLoyalCustomersAsync(); 
                 }
             }
         }
